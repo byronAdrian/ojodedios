@@ -83,7 +83,12 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
       console.warn(`[cameras:${sourceId}]`, error?.message || error);
       return jsonResponse(
         status,
-        { error: 'upstream_unavailable', sourceId, message: error instanceof UpstreamError ? error.message : 'Catalog parse failed' },
+        {
+          error: error instanceof UpstreamError ? 'upstream_unavailable' : 'catalog_unusable',
+          sourceId,
+          // Upstream/parse messages describe public provider data only; safe to expose for diagnosis.
+          message: String(error?.message || error).slice(0, 300),
+        },
         { 'Cache-Control': 'public, s-maxage=60' },
       );
     }

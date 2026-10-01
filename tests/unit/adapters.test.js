@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseDgtCatalog, dgtFrameUrl, prettifyDgtName } from '../../server/sources/dgt.js';
-import { parseMadridKml, madridFrameUrl } from '../../server/sources/madrid.js';
+import { parseMadridKml, madridFrameUrl, madridNativeId, madridImageKey } from '../../server/sources/madrid.js';
 import { parseTflCatalog } from '../../server/sources/tfl.js';
 import { parseFintrafficCatalog } from '../../server/sources/fintraffic.js';
 import { createCamera } from '../../src/domain/camera.js';
@@ -37,6 +37,8 @@ test('DGT: parses real records, assigns region by coordinates, skips rows withou
 
 test('DGT: unknown format fails loudly instead of returning an empty catalog', () => {
   assert.throws(() => parseDgtCatalog('<html>maintenance</html>', ctx), /no reconocido/);
+  const noImages = '<cctvCameraMetadataRecord><urlLinkAddress>https://nueva.dgt.es/c/1.png</urlLinkAddress></cctvCameraMetadataRecord>';
+  assert.throws(() => parseDgtCatalog(noImages, ctx), /1 registros sin imagen reconocible.*nueva\.dgt\.es/);
 });
 
 test('DGT frame URL only accepts numeric ids', () => {
@@ -53,17 +55,44 @@ test('Madrid KML: real placemarks become Madrid traffic cameras', () => {
   const cams = parseMadridKml(fixture('madrid-cameras-sample.kml'), ctx).map(createCamera);
   assert.equal(cams.length, 3);
   const first = cams[0];
-  assert.equal(first.id, 'madrid:Camara00032_mdf');
+  assert.ok(first, 'valid camera');
+  assert.equal(first.id, `madrid:${madridNativeId('informo.munimadrid.es/informo/Camaras/Camara00032_mdf.jpg')}`);
   assert.equal(first.name, 'Glorieta Alonso Martinez');
   assert.equal(first.city, 'Madrid');
   assert.equal(first.provinceCode, 'ES-M');
   assert.equal(first.refreshSeconds, 600);
-  assert.equal(first.mediaUrl, '/api/frame?id=madrid:Camara00032_mdf');
+  assert.equal(first.mediaUrl, `/api/frame?id=${first.id}`);
+  assert.equal(madridFrameUrl(first.id.slice('madrid:'.length)), 'http://informo.munimadrid.es/informo/Camaras/Camara00032_mdf.jpg');
 });
 
-test('Madrid frame URL rejects traversal and foreign stems', () => {
-  assert.match(madridFrameUrl('Camara00032_mdf'), /^http:\/\/informo\.munimadrid\.es\/informo\/Camaras\/Camara00032_mdf\.jpg$/);
-  for (const bad of ['../etc', 'Camara/../x', 'Other01', 'Camara00032.jpg', '']) assert.equal(madridFrameUrl(bad), null, bad);
+test('Madrid KML: accepts other image paths on official hosts (format drift)', () => {
+  const kml = `<kml><Document>
+    <Placemark><description>&lt;img src="https://informo.madrid.es/cameras/Camara06303.jpg"&gt;</description>
+      <ExtendedData><Data name="Nombre"><Value>PZA ESPAÑA</Value></Data></ExtendedData>
+      <Point><coordinates>-3.7122,40.4233,0</coordinates></Point></Placemark>
+    <Placemark><description>sin imagen</description><ExtendedData><Data name="Url"><Value>http://informo.madrid.es/cameras/Camara1.JPG</Value></Data></ExtendedData>
+      <Point><coordinates>-3.70,40.42</coordinates></Point></Placemark>
+    <Placemark><description>&lt;img src="https://evil.example.com/x.jpg"&gt;</description><Point><coordinates>-3.7,40.4</coordinates></Point></Placemark>
+  </Document></kml>`;
+  const cams = parseMadridKml(kml, ctx).map(createCamera);
+  assert.equal(cams.length, 2);
+  assert.equal(cams[0].name, 'Plaza España');
+  assert.equal(madridFrameUrl(cams[0].id.split(':')[1]), 'http://informo.madrid.es/cameras/Camara06303.jpg');
+});
+
+test('Madrid KML with no usable image fails loudly with a diagnostic sample', () => {
+  const kml = '<kml><Placemark><description>&lt;img src="https://otro.example/x.jpg"&gt;</description><Point><coordinates>-3.7,40.4</coordinates></Point></Placemark></kml>';
+  assert.throws(() => parseMadridKml(kml, ctx), /1 placemarks sin imagen reconocible.*otro\.example/);
+});
+
+test('Madrid frame URL rejects foreign hosts, traversal and junk ids', () => {
+  const enc = (s) => Buffer.from(s).toString('base64url');
+  for (const bad of [
+    enc('evil.com/x.jpg'), enc('informo.madrid.es/../etc/passwd.jpg'), enc('informo.madrid.es/x.exe'),
+    enc('informo.madrid.es.evil.com/x.jpg'), '../etc', '', 'short', 'not*base64',
+  ]) assert.equal(madridFrameUrl(bad), null, bad);
+  assert.equal(madridImageKey('https://informo.madrid.es:8443/a.jpg'), null);
+  assert.equal(madridImageKey('https://informo.madrid.es/a.jpg?x=1'), null);
 });
 
 test('TfL keeps only available cameras on the official bucket', () => {

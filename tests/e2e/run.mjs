@@ -101,8 +101,8 @@ async function main() {
       if (id === failFrame) return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"frame_unavailable"}' });
       return route.fulfill({ contentType: 'image/jpeg', body: JPEG });
     });
-    await page.route(/basemaps\.cartocdn\.com|amazonaws\.com|digitraffic\.fi/, (route) =>
-      route.fulfill({ contentType: route.request().url().endsWith('.png') ? 'image/png' : 'image/jpeg', body: route.request().url().endsWith('.png') ? PNG : JPEG }),
+    await page.route(/arcgisonline\.com|amazonaws\.com|digitraffic\.fi/, (route) =>
+      route.fulfill({ contentType: /arcgisonline/.test(route.request().url()) ? 'image/png' : 'image/jpeg', body: /arcgisonline/.test(route.request().url()) ? PNG : JPEG }),
     );
     await page.goto(`${base}${path}`);
     // On mobile the list lives in a closed bottom sheet: wait for it to be populated, not visible.
@@ -122,7 +122,7 @@ async function main() {
     assert.equal(await page.locator('.scope-tab[data-scope="spain"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await count(page), '7 de 7 cámaras');
     assert.equal(await page.locator('#map-status .status-pill--error').count(), 0, 'globe/WebGL must start');
-    assert.ok((await page.locator('#credits').innerText()).includes('OpenStreetMap'), 'basemap attribution visible');
+    assert.ok((await page.locator('#credits').innerText()).includes('Esri'), 'basemap attribution visible');
     await page.screenshot({ path: 'test-results/desktop-light.png' });
     noProblems(page);
     await close(page);
@@ -202,7 +202,7 @@ async function main() {
     assert.match(await page.locator('.media__stamp').innerText(), /Recibida/);
     assert.match(await page.locator('#detail').innerText(), /Ayuntamiento de Madrid/);
     assert.equal(await page.locator('#detail a', { hasText: 'Fuente original' }).getAttribute('rel'), 'noopener noreferrer');
-    await page.waitForURL(/cam=madrid%3ACamara00019_mdf/);
+    await page.waitForURL(new RegExp(`cam=madrid%3A${Buffer.from('informo.munimadrid.es/informo/Camaras/Camara00019_mdf.jpg').toString('base64url')}`));
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#detail').isVisible(), false);
     noProblems(page);

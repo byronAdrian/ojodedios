@@ -11,7 +11,7 @@ reenvía la imagen del proveedor, sin almacenarla ni modificarla, con atribució
 | **Ayuntamiento de Madrid** (Informo) | Ciudad de Madrid | KML `https://datos.madrid.es/egob/catalogo/202088-0-trafico-camaras.kml` ([ficha](https://datos.madrid.es/dataset/202088-0-trafico-camaras)) | JPEG `http://informo.munimadrid.es/informo/Camaras/Camara*.jpg` → vía `/api/frame`; imagen cada ~10 min | Condiciones de datos.madrid.es (reutilización con atribución) | Esquema verificado con un KML real (fixture). Disponibilidad en vivo no verificada. |
 | **Transport for London** — JamCams | Londres | `https://api.tfl.gov.uk/Place/Type/JamCam` (sin clave; `TFL_APP_KEY` opcional sube el límite) | JPEG HTTPS en el bucket oficial de TfL (carga directa) | [TfL Open Data](https://tfl.gov.uk/info-for/open-data-users/): «Powered by TfL Open Data» | Adaptador portado de gods-eye-view. Disponibilidad en vivo no verificada. |
 | **Fintraffic / Digitraffic** — weathercams | Finlandia | `https://tie.digitraffic.fi/api/weathercam/v1/stations` (cabecera `Digitraffic-User`) | JPEG HTTPS `weathercam.digitraffic.fi` (carga directa) | [CC BY 4.0](https://www.digitraffic.fi/en/terms-of-service/) | Adaptador portado de gods-eye-view. Disponibilidad en vivo no verificada. |
-| **CARTO basemaps** (Positron / Dark Matter) | Mapa base | — | Teselas `*.basemaps.cartocdn.com` | © OpenStreetMap contributors, © CARTO. Uso gratuito sujeto a sus [condiciones](https://carto.com/attributions) y límites razonables; para tráfico comercial alto, contratar o usar otro proveedor. | — |
+| **Esri Canvas** (World Light/Dark Gray Base) | Mapa base | — | Teselas `services.arcgisonline.com` (sin clave) | Atribución obligatoria «Esri, HERE, Garmin, © OpenStreetMap contributors…» (se muestra en el mapa). Revisa los [términos de Esri](https://www.esri.com/en-us/legal/terms/full-master-agreement) antes de un uso comercial intensivo; se puede cambiar con `VITE_BASEMAP_*`. | Sustituye a CARTO, que ahora responde «API KEY REQUIRED» (detectado en producción). |
 | **Natural Earth** admin-1 | Polígonos de provincias (asignación de provincia/comunidad) | Empaquetado: `server/geo/spainProvinces.data.js` | — | Dominio público | Generado de forma reproducible (`npm run data:spain`). |
 
 ## Qué significa cada estado en la interfaz
@@ -35,5 +35,8 @@ reenvía la imagen del proveedor, sin almacenarla ni modificarla, con atribució
   y paisaje*. El resto de categorías aparecen deshabilitadas con contador 0, no se rellenan.
 - **Vídeo:** ninguna fuente integrada ofrece vídeo; el modelo admite `hls` y la interfaz
   muestra «formato no soportado» con enlace a la fuente si apareciera.
+- **Madrid:** el formato de ruta de imagen del KML ha cambiado con los años; el adaptador acepta
+  cualquier imagen en los hosts oficiales de Informo. Si el catálogo no produce ninguna cámara
+  válida, la API responde `catalog_unusable` con un ejemplo de la URL rechazada.
 - Las imágenes contienen la vía pública. La aplicación no analiza, reconoce ni almacena
   su contenido.

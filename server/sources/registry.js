@@ -92,5 +92,8 @@ export async function loadCatalog(sourceId, { env = process.env, fetchImpl = glo
     seen.add(camera.id);
     cameras.push(camera);
   }
+  if (!cameras.length) {
+    throw new Error(`${sourceId}: el catálogo no contiene cámaras válidas (${raw.length} filas, ${rejected} rechazadas)`);
+  }
   return { sourceId, checkedAt, cameras, rejected };
 }

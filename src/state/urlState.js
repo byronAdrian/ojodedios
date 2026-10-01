@@ -11,7 +11,7 @@ import { defaultFilters } from '../domain/filters.js';
 
 const CATEGORY_IDS = new Set(CATEGORIES.map((c) => c.id));
 const STATUSES = new Set(['all', 'active', 'online', 'offline']);
-const CAMERA_ID = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,64}$/;
+const CAMERA_ID = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,240}$/;
 
 /**
  * @typedef {{ lat: number, lon: number, km: number }} ViewTarget

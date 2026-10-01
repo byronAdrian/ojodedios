@@ -47,10 +47,14 @@ export function parseDgtCatalog(xml, { checkedAt }) {
     throw new Error('Formato DGT no reconocido: no hay registros cctvCameraMetadataRecord');
   }
   const out = [];
+  let sampleRejected = '';
   for (const record of records) {
     const imageUrl = firstText(record, 'urlLinkAddress');
     const match = FRAME_PATH.exec(imageUrl);
-    if (!match) continue;
+    if (!match) {
+      sampleRejected ||= imageUrl || '(sin urlLinkAddress)';
+      continue;
+    }
     const nativeId = String(Number(match[1]));
     const lat = Number(firstText(record, 'latitude'));
     const lon = Number(firstText(record, 'longitude'));
@@ -72,6 +76,9 @@ export function parseDgtCatalog(xml, { checkedAt }) {
       status: 'listed',
       checkedAt,
     });
+  }
+  if (!out.length) {
+    throw new Error(`DGT: ${records.length} registros sin imagen reconocible (ejemplo: ${sampleRejected.slice(0, 160)})`);
   }
   return out;
 }

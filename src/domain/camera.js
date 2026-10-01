@@ -13,7 +13,7 @@
  *   listed = it is in the catalog but the provider publishes no health flag.
  *
  * @typedef {object} Camera
- * @property {string} id              `${providerId}:${nativeId}` — stable, URL-safe
+ * @property {string} id              `${providerId}:${nativeId}` — stable, URL-safe (≤240 chars)
  * @property {string} providerId
  * @property {string} name
  * @property {string} countryCode     ISO 3166-1 alpha-2
@@ -105,7 +105,7 @@ export const PROVIDERS = Object.freeze({
 
 export const getProvider = (id) => PROVIDERS[id] ?? null;
 
-const ID_PATTERN = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,64}$/;
+const ID_PATTERN = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,240}$/;
 const MEDIA_TYPES = new Set(['image', 'hls', 'none']);
 const LIVENESS = new Set(['live', 'periodic', 'archived']);
 const STATUSES = new Set(['active', 'listed']);

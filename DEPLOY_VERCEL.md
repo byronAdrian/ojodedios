@@ -57,6 +57,7 @@ Configúralas en *Project → Settings → Environment Variables*, por entorno
 | Variable | Ámbito | Obligatoria | Uso |
 |---|---|---|---|
 | `VITE_CESIUM_ION_TOKEN` | **Pública** (se incrusta en el JS) | No | Solo para servicios de Cesium ion. Usa un token `assets:read` restringido por URL a tus dominios. |
+| `VITE_BASEMAP_LIGHT_URL`, `VITE_BASEMAP_DARK_URL`, `VITE_BASEMAP_ATTRIBUTION` | **Pública** | No | Mapa base alternativo (plantilla `https://…/{z}/{x}/{y}`). Añade su host a `img-src` y `connect-src` en `vercel.json`. |
 | `TFL_APP_KEY` | Servidor | No | Sube el límite de la API de TfL. |
 | `SOURCE_DGT_ENABLED`, `SOURCE_MADRID_ENABLED`, `SOURCE_TFL_ENABLED`, `SOURCE_FINTRAFFIC_ENABLED` | Servidor | No | `0` desactiva un proveedor sin redesplegar código. |
 | `FRAME_RATE_LIMIT_PER_MIN` | Servidor | No | Límite por cliente e instancia de `/api/frame` (por defecto 240). |
@@ -97,6 +98,8 @@ comprobaciones solo pueden hacerse con el despliegue real**:
 | Imágenes de TfL/Fintraffic no cargan | CSP `img-src` o el proveedor cambió de host | Actualiza `vercel.json` y el adaptador; el host está fijado a propósito |
 | 429 en `/api/frame` | Limitador por instancia | Sube `FRAME_RATE_LIMIT_PER_MIN` o usa reglas del Firewall de Vercel |
 | El build falla en Vercel por Node | Versión de Node fuera de rango | *Settings → General → Node.js Version*: 22.x |
+| Mapa con marca de agua «API KEY REQUIRED» | El proveedor de teselas exige clave | Usa el valor por defecto (Esri) o configura `VITE_BASEMAP_*` con un proveedor con clave |
+| `catalog_unusable` en `/api/cameras` | El proveedor cambió el formato | El campo `message` incluye un ejemplo de lo rechazado: abre una incidencia con él |
 | Factura de Functions alta | Muchas imágenes vía proxy | La caché CDN (`s-maxage=60`) ya agrupa peticiones; valora reglas de Firewall |
 
 ## 9. Rendimiento del build (medido)

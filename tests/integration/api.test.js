@@ -142,3 +142,22 @@ test('sniffImageType', () => {
   assert.equal(sniffImageType(JPEG), 'image/jpeg');
   assert.equal(sniffImageType(new TextEncoder().encode('<html>')), null);
 });
+
+test('a catalog that parses but yields no valid camera is reported, not served as empty', async () => {
+  const xml = '<cctvCameraMetadataRecord><urlLinkAddress>https://x/1.png</urlLinkAddress></cctvCameraMetadataRecord>';
+  const { cameras } = createHandlers({ env: {}, fetchImpl: fakeFetch({ [DGT]: new Response(xml) }) });
+  const res = await cameras(req('/api/cameras?source=dgt'));
+  assert.equal(res.status, 500);
+  const body = await res.json();
+  assert.equal(body.error, 'catalog_unusable');
+  assert.match(body.message, /sin imagen reconocible/);
+});
+
+test('madrid frame ids are decoded and re-validated server-side', async () => {
+  const id = Buffer.from('informo.madrid.es/cameras/Camara06303.jpg').toString('base64url');
+  const fetchImpl = fakeFetch({ 'http://informo.madrid.es/cameras/Camara06303.jpg': new Response(JPEG) });
+  const { frame } = createHandlers({ env: {}, fetchImpl });
+  assert.equal((await frame(req(`/api/frame?id=madrid:${id}`))).status, 200);
+  const evil = Buffer.from('169.254.169.254/latest.jpg').toString('base64url');
+  assert.equal((await frame(req(`/api/frame?id=madrid:${evil}`))).status, 404);
+});

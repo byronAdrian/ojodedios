@@ -13,7 +13,7 @@ const KEYS = {
 export const THEME_PREFERENCES = Object.freeze(['system', 'light', 'dark']);
 export const HISTORY_SIZES = Object.freeze([5, 10, 20, 50]);
 const MAX_FAVORITES = 500;
-const CAMERA_ID = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,64}$/;
+const CAMERA_ID = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,240}$/;
 
 /** Storage wrapper that never throws. */
 export function createSafeStorage(getStorage = () => globalThis.localStorage) {

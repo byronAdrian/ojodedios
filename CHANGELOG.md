@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-10-01
+
+- Mapa base: CARTO exige ahora clave («API KEY REQUIRED» en producción) → Esri Canvas claro/oscuro sin clave, configurable con `VITE_BASEMAP_*`.
+- Madrid: acepta cualquier ruta de imagen en los hosts oficiales de Informo (el formato del KML había cambiado y se descartaban todas las cámaras).
+- Un catálogo sin cámaras válidas ya no se presenta como «vacío»: la API devuelve `catalog_unusable` con diagnóstico y la interfaz lo muestra como fuente no disponible.
+
 ## 0.1.0 — 2026-10-01
 
 Primera versión de WORLDVIEW ESPAÑA.
