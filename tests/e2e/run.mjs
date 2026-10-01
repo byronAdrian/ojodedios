@@ -329,6 +329,20 @@ async function main() {
     await close(page);
   });
 
+  await step('control room: grid of live stills, URL state, Escape closes', async () => {
+    const page = await open('/');
+    await page.locator('.mosaic-toggle').click();
+    await page.waitForSelector('#mosaic:not([hidden]) .mosaic__tile');
+    assert.equal(await page.locator('.mosaic__tile').count(), 7);
+    await page.waitForFunction(() => [...document.querySelectorAll('.mosaic__age')].some((n) => n.textContent.startsWith('Recibida')));
+    await page.waitForURL(/mos=1/);
+    await page.screenshot({ path: 'test-results/desktop-mosaic.png' });
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#mosaic').isVisible(), false);
+    noProblems(page);
+    await close(page);
+  });
+
   await step('keyboard: skip link, focus visible on cards, Enter opens detail', async () => {
     const page = await open('/');
     await page.keyboard.press('Tab');

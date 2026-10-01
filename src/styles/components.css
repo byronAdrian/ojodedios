@@ -859,3 +859,130 @@
   vertical-align: -2px;
   color: var(--flight);
 }
+
+/* ---------- Control room (mosaic) ---------- */
+.mosaic {
+  position: absolute;
+  inset: 0;
+  z-index: calc(var(--z-map-controls) - 1); /* under the map controls, over the globe */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  padding-right: calc(var(--space-4) + 64px); /* keep clear of the map controls column */
+  overflow-y: auto;
+  background: var(--bg);
+}
+.mosaic__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.mosaic__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+.mosaic__title .icon {
+  vertical-align: -3px;
+  color: var(--accent);
+}
+.mosaic__hint {
+  margin: 0;
+  flex: 1 1 260px;
+  font-size: var(--text-xs);
+  color: var(--text-3);
+}
+.mosaic__pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.mosaic__page {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.mosaic__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 599px) {
+  .mosaic__grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+  .mosaic {
+    padding: var(--space-3);
+  }
+  .mosaic__hint {
+    display: none;
+  }
+}
+.mosaic__tile {
+  display: grid;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+  text-align: left;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.mosaic__tile:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+.mosaic__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #0a0f18;
+}
+.mosaic__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mosaic__media.is-error {
+  background: repeating-linear-gradient(45deg, #111827, #111827 10px, #0b1220 10px, #0b1220 20px);
+}
+.mosaic__age {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(8, 12, 20, 0.75);
+  color: #e8eef6;
+  font-size: 11px;
+}
+.mosaic__caption {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+.mosaic__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mosaic__meta {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mosaic-toggle[aria-pressed='true'] {
+  color: var(--accent);
+}

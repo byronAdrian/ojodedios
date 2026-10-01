@@ -17,6 +17,7 @@ const elements = {
   resultsPane: $('#results-pane'),
   detail: $('#detail'),
   flightDetail: $('#flight-detail'),
+  mosaic: $('#mosaic'),
   mapControls: $('#map-controls'),
   mapStatus: $('#map-status'),
   bottomNav: $('#bottom-nav'),

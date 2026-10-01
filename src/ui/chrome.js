@@ -4,10 +4,11 @@
  */
 import { h, icon, render } from './dom.js';
 
-/** @param {{ container: HTMLElement, actions: { zoomIn, zoomOut, resetGlobal, centerSpain, toggleMode, toggleFlights } }} deps */
+/** @param {{ container: HTMLElement, actions: { zoomIn, zoomOut, resetGlobal, centerSpain, toggleMode, toggleFlights, toggleMosaic } }} deps */
 export function createMapControls({ container, actions }) {
   const modeButton = h('button', { type: 'button', class: 'icon-btn', onClick: actions.toggleMode });
   const flightsButton = h('button', { type: 'button', class: 'icon-btn flights-toggle', onClick: actions.toggleFlights });
+  const mosaicButton = h('button', { type: 'button', class: 'icon-btn mosaic-toggle', onClick: actions.toggleMosaic, 'aria-pressed': 'false', 'aria-label': 'Sala de control: ver varias cámaras a la vez', title: 'Sala de control' }, icon('grid'));
   render(
     container,
     h('div', { class: 'control-group', role: 'group', 'aria-label': 'Zoom' },
@@ -17,9 +18,12 @@ export function createMapControls({ container, actions }) {
       h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Centrar en España', title: 'Centrar en España', onClick: actions.centerSpain }, icon('target')),
       h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Vista global del planeta', title: 'Vista global', onClick: actions.resetGlobal }, icon('globe')),
       modeButton),
-    h('div', { class: 'control-group', role: 'group', 'aria-label': 'Capas' }, flightsButton),
+    h('div', { class: 'control-group', role: 'group', 'aria-label': 'Capas' }, flightsButton, mosaicButton),
   );
   return {
+    setMosaic(on) {
+      mosaicButton.setAttribute('aria-pressed', String(on));
+    },
     /** @param {boolean} on @param {{ status?: string, count?: number }} [info] */
     setFlights(on, { status, count = 0 } = {}) {
       const detail = !on ? 'desactivados' : status === 'error' ? 'fuente no disponible' : `${count} en vista`;

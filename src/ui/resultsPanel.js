@@ -146,6 +146,9 @@ export function createResultsPanel({ container, actions }) {
     render(
       header,
       h('h2', { class: 'pane__title', id: 'results-title' }, tab === 'results' ? 'Cámaras' : tab === 'favorites' ? 'Favoritas' : 'Recientes'),
+      tab !== 'recents' && items.length
+        ? h('button', { type: 'button', class: 'btn btn--ghost btn--sm', onClick: actions.openMosaic }, icon('grid', 'icon icon--sm'), 'Sala de control')
+        : null,
       tab === 'recents'
         ? h('div', { class: 'actions' },
             h('label', { class: 'sr-only', for: 'history-size' }, 'Tamaño del historial'),
