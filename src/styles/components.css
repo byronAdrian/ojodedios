@@ -1005,3 +1005,21 @@
   font-weight: var(--weight-bold);
   letter-spacing: 0.04em;
 }
+
+/* External game link */
+.game-link {
+  gap: 6px;
+  padding: 0 var(--space-3);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-2);
+}
+@media (max-width: 1100px) {
+  .game-link {
+    padding: 0;
+  }
+  .game-link__label {
+    display: none;
+  }
+}

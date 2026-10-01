@@ -360,6 +360,16 @@ async function main() {
     await close(page);
   });
 
+  await step('external zombie game link opens safely in a new tab', async () => {
+    const page = await open('/');
+    const link = page.locator('#game-link');
+    assert.equal(await link.isVisible(), true);
+    assert.match(await link.getAttribute('href'), /^https:\/\//);
+    assert.equal(await link.getAttribute('target'), '_blank');
+    assert.equal(await link.getAttribute('rel'), 'noopener noreferrer');
+    await close(page);
+  });
+
   await step('keyboard: skip link, focus visible on cards, Enter opens detail', async () => {
     const page = await open('/');
     await page.keyboard.press('Tab');
