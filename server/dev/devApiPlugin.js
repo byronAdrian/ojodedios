@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 
-const ROUTES = { '/api/cameras': 'cameras', '/api/frame': 'frame', '/api/health': 'health' };
+const ROUTES = { '/api/cameras': 'cameras', '/api/frame': 'frame', '/api/flights': 'flights', '/api/flight-trace': 'flightTrace', '/api/health': 'health' };
 
 function toRequest(req) {
   const url = `http://${req.headers.host || 'localhost'}${req.url}`;
@@ -51,7 +51,7 @@ export function devApiPlugin() {
     }
   };
   return {
-    name: 'worldview-dev-api',
+    name: 'ojodedios-dev-api',
     // Block bodies on purpose: a returned function would be treated as a post hook.
     configureServer(server) {
       server.middlewares.use(middleware(false));

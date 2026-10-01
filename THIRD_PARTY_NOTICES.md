@@ -30,6 +30,6 @@ El logotipo de Cesium ion se muestra en los créditos del mapa, como hace Cesium
 
 Polígonos admin-1 en `server/geo/spainProvinces.data.js`. Made with Natural Earth.
 
-## Mapa base — OpenStreetMap / CARTO
+## Mapa base — Esri Canvas
 
-© OpenStreetMap contributors (ODbL). Estilos de mapa © CARTO. La atribución se muestra en el mapa.
+Teselas © Esri y sus proveedores (HERE, Garmin, © OpenStreetMap contributors, comunidad GIS). La atribución se muestra en el mapa.

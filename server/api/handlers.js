@@ -6,6 +6,8 @@
 import { SOURCES, isSourceEnabled, loadCatalog } from '../sources/registry.js';
 import { safeFetch, UpstreamError } from '../http/safeFetch.js';
 import { createRateLimiter, clientKey } from './rateLimit.js';
+import { createOpenSkyClient, openskyTtlMs } from '../sources/opensky.js';
+import { FLIGHT_PROVIDERS, TRACE_PROVIDERS, normalizeAdsbLol, quantiseFlightQuery, validHex, traceUrl, parseTrace } from '../sources/flights.js';
 
 const CATALOG_TTL_MS = 15 * 60 * 1000;
 const FRAME_MAX_BYTES = 3 * 1024 * 1024;
@@ -83,7 +85,12 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
       console.warn(`[cameras:${sourceId}]`, error?.message || error);
       return jsonResponse(
         status,
-        { error: 'upstream_unavailable', sourceId, message: error instanceof UpstreamError ? error.message : 'Catalog parse failed' },
+        {
+          error: error instanceof UpstreamError ? 'upstream_unavailable' : 'catalog_unusable',
+          sourceId,
+          // Upstream/parse messages describe public provider data only; safe to expose for diagnosis.
+          message: String(error?.message || error).slice(0, 300),
+        },
         { 'Cache-Control': 'public, s-maxage=60' },
       );
     }
@@ -113,7 +120,9 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
         headers: { Accept: 'image/*' },
       });
       const type = sniffImageType(body);
-      if (!type) return jsonResponse(502, { error: 'not_an_image' }, { 'Cache-Control': 'public, s-maxage=30' });
+      if (!type) {
+        return jsonResponse(502, { error: 'not_an_image', message: `El proveedor devolvió ${body.length} bytes que no son una imagen` }, { 'Cache-Control': 'public, s-maxage=30' });
+      }
       return new Response(request.method === 'HEAD' ? null : body, {
         status: 200,
         headers: {
@@ -125,8 +134,148 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
       });
     } catch (error) {
       const status = error instanceof UpstreamError && error.status === 404 ? 404 : 502;
-      return jsonResponse(status, { error: 'frame_unavailable' }, { 'Cache-Control': 'public, s-maxage=30' });
+      // The reason (e.g. "Upstream HTTP 403", "Upstream timeout") names no secret; it makes provider blocks diagnosable.
+      const message = error instanceof UpstreamError ? error.message : 'Error interno';
+      return jsonResponse(status, { error: 'frame_unavailable', message }, { 'Cache-Control': 'public, s-maxage=30' });
     }
+  }
+
+  /** @type {Map<string, { at: number, body: object }>} */
+  const flightCache = new Map();
+  const FLIGHT_TTL_MS = 10_000;
+  const FLIGHT_STALE_MS = 120_000;
+  /** provider id → epoch ms until which it is skipped (after 429/5xx/timeout). */
+  const flightCooldown = new Map();
+  const FLIGHT_COOLDOWN_MS = 60_000;
+
+  const opensky = createOpenSkyClient({ env, fetchImpl, now: () => now().getTime() });
+  /** Shared worldwide snapshot: { at, ttl, body } — one upstream call per TTL per instance. */
+  let world = null;
+  let worldPending = null;
+
+  async function worldFlights() {
+    const t = now().getTime();
+    const cacheHeaders = (ttl) => ({ 'Cache-Control': `public, max-age=30, s-maxage=${Math.round(ttl / 1000)}, stale-while-revalidate=${Math.round(ttl / 1000) * 2}` });
+    if (world && t - world.at < world.ttl) return jsonResponse(200, world.body, cacheHeaders(world.ttl - (t - world.at)));
+    if (t < (flightCooldown.get('opensky') ?? 0)) {
+      if (world) return jsonResponse(200, { ...world.body, stale: true }, cacheHeaders(60_000));
+      return jsonResponse(503, { error: 'rate_limited', message: 'OpenSky en espera tras un error o límite de uso' }, { 'Retry-After': '120' });
+    }
+    worldPending ??= opensky
+      .snapshot()
+      .then(({ aircraft, remaining, authenticated }) => {
+        const ttl = openskyTtlMs({ authenticated, remaining });
+        world = {
+          at: now().getTime(),
+          ttl,
+          body: {
+            enabled: true,
+            scope: 'world',
+            source: 'opensky',
+            attribution: 'The OpenSky Network (uso no comercial)',
+            authenticated,
+            refreshSeconds: Math.round(ttl / 1000),
+            fetchedAt: now().toISOString(),
+            fields: ['hex', 'callsign', 'lat', 'lon', 'altitudeM', 'onGround', 'speedKmh', 'track'],
+            aircraft,
+          },
+        };
+        return world;
+      })
+      .finally(() => {
+        worldPending = null;
+      });
+    try {
+      const snapshot = await worldPending;
+      return jsonResponse(200, snapshot.body, cacheHeaders(snapshot.ttl));
+    } catch (error) {
+      flightCooldown.set('opensky', t + 5 * 60_000);
+      if (world) return jsonResponse(200, { ...world.body, stale: true }, cacheHeaders(60_000));
+      return jsonResponse(502, { error: 'upstream_unavailable', message: `OpenSky: ${String(error?.message || error).slice(0, 200)}` }, { 'Cache-Control': 'public, s-maxage=60' });
+    }
+  }
+
+  async function flights(request) {
+    const blocked = methodGuard(request);
+    if (blocked) return blocked;
+    if (String(env.SOURCE_FLIGHTS_ENABLED ?? '1') === '0') {
+      return jsonResponse(200, { enabled: false, aircraft: [] }, { 'Cache-Control': 'public, s-maxage=300' });
+    }
+    const params = new URL(request.url).searchParams;
+    // One URL for the whole planet → the CDN shares it between every visitor.
+    if (params.get('scope') === 'world') return worldFlights();
+    const query = quantiseFlightQuery(params.get('lat'), params.get('lon'), params.get('dist'));
+    if (!query) return jsonResponse(400, { error: 'invalid_query' });
+    const key = `${query.lat},${query.lon},${query.dist}`;
+    const t = now().getTime();
+    const hit = flightCache.get(key);
+    const headers = { 'Cache-Control': 'public, max-age=5, s-maxage=10, stale-while-revalidate=20' };
+    if (hit && t - hit.at < FLIGHT_TTL_MS) return jsonResponse(200, hit.body, headers);
+
+    const failures = [];
+    for (const provider of FLIGHT_PROVIDERS) {
+      if (t < (flightCooldown.get(provider.id) ?? 0)) {
+        failures.push(`${provider.id}: en espera`);
+        continue;
+      }
+      try {
+        const { body } = await safeFetch(provider.url(query), {
+          allowedHosts: provider.hosts,
+          timeoutMs: 6_000,
+          maxBytes: 8 * 1024 * 1024,
+          fetchImpl,
+          headers: { Accept: 'application/json' },
+        });
+        const result = {
+          enabled: true,
+          query,
+          source: provider.id,
+          attribution: provider.attribution,
+          fetchedAt: now().toISOString(),
+          aircraft: normalizeAdsbLol(JSON.parse(new TextDecoder().decode(body))),
+        };
+        if (flightCache.size > 500) flightCache.delete(flightCache.keys().next().value);
+        flightCache.set(key, { at: t, body: result });
+        return jsonResponse(200, result, headers);
+      } catch (error) {
+        // Rate limits, outages and malformed payloads all sideline the provider for a while.
+        flightCooldown.set(provider.id, t + FLIGHT_COOLDOWN_MS);
+        failures.push(`${provider.id}: ${String(error?.message || error).slice(0, 80)}`);
+      }
+    }
+    if (hit && t - hit.at < FLIGHT_STALE_MS) return jsonResponse(200, { ...hit.body, stale: true }, headers);
+    return jsonResponse(502, { error: 'upstream_unavailable', message: failures.join(' · ').slice(0, 400) }, { 'Cache-Control': 'public, s-maxage=10' });
+  }
+
+  async function flightTrace(request) {
+    const blocked = methodGuard(request);
+    if (blocked) return blocked;
+    const hex = validHex(new URL(request.url).searchParams.get('hex'));
+    if (!hex) return jsonResponse(400, { error: 'invalid_hex' });
+    const t = now().getTime();
+    const failures = [];
+    for (const provider of TRACE_PROVIDERS) {
+      if (t < (flightCooldown.get(`trace:${provider.id}`) ?? 0)) {
+        failures.push(`${provider.id}: en espera`);
+        continue;
+      }
+      try {
+        const { body } = await safeFetch(traceUrl(provider.host, hex), {
+          allowedHosts: [provider.host],
+          timeoutMs: 6_000,
+          maxBytes: 4 * 1024 * 1024,
+          fetchImpl,
+          headers: { Accept: 'application/json' },
+        });
+        const trace = parseTrace(JSON.parse(new TextDecoder().decode(body)));
+        return jsonResponse(200, { hex, source: provider.id, ...trace }, { 'Cache-Control': 'public, max-age=15, s-maxage=30' });
+      } catch (error) {
+        // A 404 just means this network has no track for the aircraft: try the next one, no cooldown.
+        if (!(error instanceof UpstreamError && error.status === 404)) flightCooldown.set(`trace:${provider.id}`, t + FLIGHT_COOLDOWN_MS);
+        failures.push(`${provider.id}: ${String(error?.message || error).slice(0, 80)}`);
+      }
+    }
+    return jsonResponse(502, { error: 'trace_unavailable', message: failures.join(' · ').slice(0, 400) }, { 'Cache-Control': 'public, s-maxage=15' });
   }
 
   function health(request) {
@@ -141,7 +290,7 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
     return jsonResponse(200, { ok: true, sources }, { 'Cache-Control': 'no-store' });
   }
 
-  return { cameras, frame, health };
+  return { cameras, frame, flights, flightTrace, health };
 }
 
 let shared;

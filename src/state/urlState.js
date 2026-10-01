@@ -3,7 +3,7 @@
  * a hand-edited or malicious link can never put the app in an invalid state.
  *
  * Params: scope=es|world · ca · pr · city · country · cat (comma list) ·
- *         st (status) · q · fav=1 · cam (camera id) · at=lat,lon,km · mode=2d
+ *         st (status) · q · fav=1 · cam (camera id) · at=lat,lon,km · mode=2d · fl=0 (flights off)
  */
 import { getCommunity, getProvince, getQuickCity, communityOfProvince } from '../domain/spain.js';
 import { CATEGORIES, COUNTRY_NAMES } from '../domain/camera.js';
@@ -11,11 +11,11 @@ import { defaultFilters } from '../domain/filters.js';
 
 const CATEGORY_IDS = new Set(CATEGORIES.map((c) => c.id));
 const STATUSES = new Set(['all', 'active', 'online', 'offline']);
-const CAMERA_ID = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,64}$/;
+const CAMERA_ID = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,240}$/;
 
 /**
  * @typedef {{ lat: number, lon: number, km: number }} ViewTarget
- * @typedef {{ filters: import('../domain/filters.js').FilterState, cameraId: string | null, view: ViewTarget | null, mode: '3d' | '2d' }} UrlState
+ * @typedef {{ filters: import('../domain/filters.js').FilterState, cameraId: string | null, view: ViewTarget | null, mode: '3d' | '2d', flights?: boolean }} UrlState
  */
 
 /** @returns {UrlState} */
@@ -52,11 +52,11 @@ export function parseUrlState(search) {
       Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && km > 0.05 && km <= 40_000) {
     view = { lat, lon, km };
   }
-  return { filters, cameraId, view, mode: params.get('mode') === '2d' ? '2d' : '3d' };
+  return { filters, cameraId, view, mode: params.get('mode') === '2d' ? '2d' : '3d', flights: params.get('fl') !== '0' };
 }
 
 /** @param {UrlState} state @returns {string} query string without "?" ('' when default) */
-export function serializeUrlState({ filters, cameraId, view, mode }) {
+export function serializeUrlState({ filters, cameraId, view, mode, flights = true }) {
   const params = new URLSearchParams();
   if (filters.scope === 'world') params.set('scope', 'world');
   if (filters.scope === 'world' && filters.country) params.set('country', filters.country);
@@ -70,6 +70,7 @@ export function serializeUrlState({ filters, cameraId, view, mode }) {
   if (cameraId) params.set('cam', cameraId);
   if (view) params.set('at', `${view.lat.toFixed(4)},${view.lon.toFixed(4)},${Math.round(view.km * 10) / 10}`);
   if (mode === '2d') params.set('mode', '2d');
+  if (!flights) params.set('fl', '0');
   return params.toString();
 }
 

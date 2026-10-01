@@ -7,11 +7,13 @@ reenvía la imagen del proveedor, sin almacenarla ni modificarla, con atribució
 
 | Proveedor | Cobertura | Catálogo | Imagen | Licencia / atribución | Estado de la verificación |
 |---|---|---|---|---|---|
-| **DGT** (Dirección General de Tráfico) | Red de carreteras del Estado **salvo País Vasco y Cataluña** (gestionan su propio tráfico) | DATEX II `CCTVSiteTablePublication` — `https://infocar.dgt.es/datex2/dgt/CCTVSiteTablePublication/all/content.xml` (publicado en el [NAP de la DGT](https://nap.dgt.es/dataset/camaras-dgt)) | JPEG `http://infocar.dgt.es/etraffic/data/camaras/{id}.jpg` → vía `/api/frame` | Datos abiertos del NAP (CC BY). Atribución: «Fuente: Dirección General de Tráfico (DGT)» | Esquema verificado con una exportación real de la DGT (fixture). **Disponibilidad en vivo no verificada** desde el entorno de desarrollo (red bloqueada). |
+| **DGT** (Dirección General de Tráfico) | Red de carreteras del Estado **salvo País Vasco y Cataluña** (gestionan su propio tráfico) | DATEX II `CCTVSiteTablePublication` — `https://infocar.dgt.es/datex2/dgt/CCTVSiteTablePublication/all/content.xml` (publicado en el [NAP de la DGT](https://nap.dgt.es/dataset/camaras-dgt)) | JPEG `https://etraffic.dgt.es/camarasEtraffic/{id}.jpg` (feed v3.6; el antiguo `infocar…/camaras/{id}.jpg` se mantiene como respaldo) → vía `/api/frame` | Datos abiertos del NAP (CC BY). Atribución: «Fuente: Dirección General de Tráfico (DGT)» | **Verificado en producción** (2026-10-01): el feed v3.6 del NAP devuelve 1.952 cámaras. La URL antigua de infocar responde 404. |
 | **Ayuntamiento de Madrid** (Informo) | Ciudad de Madrid | KML `https://datos.madrid.es/egob/catalogo/202088-0-trafico-camaras.kml` ([ficha](https://datos.madrid.es/dataset/202088-0-trafico-camaras)) | JPEG `http://informo.munimadrid.es/informo/Camaras/Camara*.jpg` → vía `/api/frame`; imagen cada ~10 min | Condiciones de datos.madrid.es (reutilización con atribución) | Esquema verificado con un KML real (fixture). Disponibilidad en vivo no verificada. |
 | **Transport for London** — JamCams | Londres | `https://api.tfl.gov.uk/Place/Type/JamCam` (sin clave; `TFL_APP_KEY` opcional sube el límite) | JPEG HTTPS en el bucket oficial de TfL (carga directa) | [TfL Open Data](https://tfl.gov.uk/info-for/open-data-users/): «Powered by TfL Open Data» | Adaptador portado de gods-eye-view. Disponibilidad en vivo no verificada. |
 | **Fintraffic / Digitraffic** — weathercams | Finlandia | `https://tie.digitraffic.fi/api/weathercam/v1/stations` (cabecera `Digitraffic-User`) | JPEG HTTPS `weathercam.digitraffic.fi` (carga directa) | [CC BY 4.0](https://www.digitraffic.fi/en/terms-of-service/) | Adaptador portado de gods-eye-view. Disponibilidad en vivo no verificada. |
-| **CARTO basemaps** (Positron / Dark Matter) | Mapa base | — | Teselas `*.basemaps.cartocdn.com` | © OpenStreetMap contributors, © CARTO. Uso gratuito sujeto a sus [condiciones](https://carto.com/attributions) y límites razonables; para tráfico comercial alto, contratar o usar otro proveedor. | — |
+| **Vuelos en directo**: adsb.lol → airplanes.live → adsb.fi | Aviones cerca de la vista (radio ≤ 250 NM) | Mismo formato readsb v2; se prueban en orden vía `/api/flights` (consulta redondeada a 0,5°, caché 10 s, 60 s de espera para una fuente que falla o devuelve 429) | — | adsb.lol: ODbL 1.0. airplanes.live y adsb.fi: uso **no comercial**; un uso comercial requiere acuerdo con ellos. La ficha muestra la fuente usada. | adsb.lol respondió 429 desde Vercel (2026-10-01); las alternativas aún no se han verificado en vivo. |
+| **OpenSky Network** — vuelos de todo el mundo | Instantánea mundial cuando la vista abarca más de 1.600 km | `https://opensky-network.org/api/states/all` vía `/api/flights?scope=world`, una única URL compartida por todos los visitantes y cacheada en la CDN | — | **No comercial**; un uso operativo o comercial requiere acuerdo con OpenSky. Sin cuenta, unas 100 consultas/día (refresco ≈ 15 min); con `OPENSKY_CLIENT_ID`/`SECRET`, ≈ 1.000/día (refresco 90 s–10 min según el saldo). | **No accesible desde Vercel** (2026-10-01: «Upstream unreachable», bloqueo de red probable). Con la vista alejada la app cubre la zona visible con hasta 12 consultas regionales (rejilla fija de 6°, 250 NM cada una, espaciadas 0,7 s y compartidas por la CDN). El planeta completo de una vez requiere una fuente de pago o un servidor que OpenSky no bloquee. |
+| **Esri Canvas** (World Light/Dark Gray Base) | Mapa base | — | Teselas `services.arcgisonline.com` (sin clave) | Atribución obligatoria «Esri, HERE, Garmin, © OpenStreetMap contributors…» (se muestra en el mapa). Revisa los [términos de Esri](https://www.esri.com/en-us/legal/terms/full-master-agreement) antes de un uso comercial intensivo; se puede cambiar con `VITE_BASEMAP_*`. | Sustituye a CARTO, que ahora responde «API KEY REQUIRED» (detectado en producción). |
 | **Natural Earth** admin-1 | Polígonos de provincias (asignación de provincia/comunidad) | Empaquetado: `server/geo/spainProvinces.data.js` | — | Dominio público | Generado de forma reproducible (`npm run data:spain`). |
 
 ## Qué significa cada estado en la interfaz
@@ -25,6 +27,8 @@ reenvía la imagen del proveedor, sin almacenarla ni modificarla, con atribució
 
 ## Limitaciones conocidas
 
+- **Vuelos:** solo se muestran aviones en un radio de hasta 250 NM (unos 460 km) alrededor del centro de la vista; con la vista muy alejada (más de 1.600 km) se pide acercar el mapa. La «ruta» es la **trayectoria observada en esta sesión**. **Origen y destino no se muestran**: la base de rutas de adsbdb (David Taylor / Jim Mason) prohíbe expresamente publicarlas sin permiso. ADS-B puede ser incompleto, tener retraso o datos erróneos.
+
 - **País Vasco y Cataluña** no están en el catálogo de la DGT. Sus fuentes candidatas
   (Open Data Euskadi — API de tráfico; Servei Català de Trànsit) no se han integrado porque
   no se pudo verificar su esquema ni sus condiciones desde este entorno. Pendiente.
@@ -35,5 +39,8 @@ reenvía la imagen del proveedor, sin almacenarla ni modificarla, con atribució
   y paisaje*. El resto de categorías aparecen deshabilitadas con contador 0, no se rellenan.
 - **Vídeo:** ninguna fuente integrada ofrece vídeo; el modelo admite `hls` y la interfaz
   muestra «formato no soportado» con enlace a la fuente si apareciera.
+- **Madrid:** el formato de ruta de imagen del KML ha cambiado con los años; el adaptador acepta
+  cualquier imagen en los hosts oficiales de Informo. Si el catálogo no produce ninguna cámara
+  válida, la API responde `catalog_unusable` con un ejemplo de la URL rechazada.
 - Las imágenes contienen la vía pública. La aplicación no analiza, reconoce ni almacena
   su contenido.

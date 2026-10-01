@@ -18,6 +18,7 @@ import { parseMadridKml } from '../../server/sources/madrid.js';
 import { parseTflCatalog } from '../../server/sources/tfl.js';
 import { parseFintrafficCatalog } from '../../server/sources/fintraffic.js';
 import { createCamera } from '../../src/domain/camera.js';
+import { normalizeAdsbLol } from '../../server/sources/flights.js';
 
 const root = new URL('../../', import.meta.url);
 const fixture = (n) => readFileSync(new URL(`tests/fixtures/${n}`, root), 'utf8');
@@ -28,6 +29,7 @@ const catalogs = {
   tfl: parseTflCatalog(JSON.parse(fixture('tfl-sample.json')), ctx).map(createCamera),
   fintraffic: parseFintrafficCatalog(JSON.parse(fixture('fintraffic-sample.json')), ctx).map(createCamera),
 };
+const aircraft = normalizeAdsbLol(JSON.parse(fixture('adsblol-sample.json')));
 const JPEG = Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64');
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 
@@ -96,13 +98,17 @@ async function main() {
       if (source === failSource) return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"upstream_unavailable","message":"Upstream HTTP 503"}' });
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, sourceId: source, checkedAt: ctx.checkedAt, cameras: catalogs[source] ?? [] }) });
     });
+    await page.route('**/api/flight-trace?*', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ hex: '400cd8', source: 'adsb.lol', points: [[-0.45, 51.47, 0], [-1.5, 47, 11000], [-0.6, 41, 10668], [-0.5, 40.12, 10668]] }) }));
+    await page.route('**/api/flights?*', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, aircraft }) }));
     await page.route('**/api/frame?*', (route) => {
       const id = new URL(route.request().url()).searchParams.get('id');
       if (id === failFrame) return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"frame_unavailable"}' });
       return route.fulfill({ contentType: 'image/jpeg', body: JPEG });
     });
-    await page.route(/basemaps\.cartocdn\.com|amazonaws\.com|digitraffic\.fi/, (route) =>
-      route.fulfill({ contentType: route.request().url().endsWith('.png') ? 'image/png' : 'image/jpeg', body: route.request().url().endsWith('.png') ? PNG : JPEG }),
+    await page.route(/arcgisonline\.com|amazonaws\.com|digitraffic\.fi/, (route) =>
+      route.fulfill({ contentType: /arcgisonline/.test(route.request().url()) ? 'image/png' : 'image/jpeg', body: /arcgisonline/.test(route.request().url()) ? PNG : JPEG }),
     );
     await page.goto(`${base}${path}`);
     // On mobile the list lives in a closed bottom sheet: wait for it to be populated, not visible.
@@ -122,7 +128,7 @@ async function main() {
     assert.equal(await page.locator('.scope-tab[data-scope="spain"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await count(page), '7 de 7 cámaras');
     assert.equal(await page.locator('#map-status .status-pill--error').count(), 0, 'globe/WebGL must start');
-    assert.ok((await page.locator('#credits').innerText()).includes('OpenStreetMap'), 'basemap attribution visible');
+    assert.ok((await page.locator('#credits').innerText()).includes('Esri'), 'basemap attribution visible');
     await page.screenshot({ path: 'test-results/desktop-light.png' });
     noProblems(page);
     await close(page);
@@ -202,7 +208,7 @@ async function main() {
     assert.match(await page.locator('.media__stamp').innerText(), /Recibida/);
     assert.match(await page.locator('#detail').innerText(), /Ayuntamiento de Madrid/);
     assert.equal(await page.locator('#detail a', { hasText: 'Fuente original' }).getAttribute('rel'), 'noopener noreferrer');
-    await page.waitForURL(/cam=madrid%3ACamara00019_mdf/);
+    await page.waitForURL(new RegExp(`cam=madrid%3A${Buffer.from('informo.munimadrid.es/informo/Camaras/Camara00019_mdf.jpg').toString('base64url')}`));
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#detail').isVisible(), false);
     noProblems(page);
@@ -210,7 +216,7 @@ async function main() {
   });
 
   await step('failing frame shows a clear error with retry and original-source link (no black box)', async () => {
-    const page = await open('/', { failFrame: 'dgt:2' });
+    const page = await open('/', { failFrame: 'dgt:i2' });
     await page.locator('.card').filter({ has: page.getByText('CGT Valladolid · cámara 2', { exact: true }) }).click();
     await page.waitForSelector('.media__overlay[role="alert"]', { timeout: 10_000 });
     const text = await page.locator('.media__overlay[role="alert"]').innerText();
@@ -221,7 +227,7 @@ async function main() {
   });
 
   await step('shared camera link restores the camera (deep link)', async () => {
-    const page = await open('/?cam=dgt%3A215');
+    const page = await open('/?cam=dgt%3Ai215');
     await page.waitForSelector('#detail:not([hidden])');
     assert.match(await page.locator('#detail-title').innerText(), /Malaga · cámara 215/);
     await close(page);
@@ -309,6 +315,19 @@ async function main() {
       await close(page);
     });
   }
+
+  await step('live flights: on by default, counted on the map control, toggle persisted in the URL', async () => {
+    const page = await open('/');
+    const toggle = page.locator('.flights-toggle');
+    await page.waitForFunction(() => document.querySelector('.flights-toggle__count')?.textContent === '2', null, { timeout: 20_000 });
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+    assert.match(await toggle.getAttribute('aria-label'), /2 en vista/);
+    await toggle.click();
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+    await page.waitForURL(/fl=0/);
+    noProblems(page);
+    await close(page);
+  });
 
   await step('keyboard: skip link, focus visible on cards, Enter opens detail', async () => {
     const page = await open('/');

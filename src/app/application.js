@@ -18,6 +18,7 @@ import { createResultsPanel } from '../ui/resultsPanel.js';
 import { createCameraDetail } from '../ui/cameraDetail.js';
 import { createMapControls, createMapStatus, createBottomNav, createToasts } from '../ui/chrome.js';
 import { debounce } from '../ui/dom.js';
+import { createFlightsController } from '../flights/flightsController.js';
 
 const DESKTOP = '(min-width: 900px)';
 
@@ -57,9 +58,28 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
     tab: 'results',
     sheet: initial.cameraId && !isDesktop() ? 'detail' : 'none',
     mode: initial.mode,
+    flightsOn: initial.flights,
+    flightSelected: false,
   });
 
   const toast = createToasts(elements.toasts);
+  let lastFlightInfo = {};
+  const flights = createFlightsController({
+    container: elements.flightDetail,
+    getMap: () => map,
+    createLayer: (globe, opts) => map.createFlightLayer(globe, opts),
+    onSelectionChange(hasFlight) {
+      const s = store.get();
+      let sheet = s.sheet;
+      if (hasFlight && !isDesktop()) sheet = 'detail';
+      else if (!hasFlight && sheet === 'detail' && !s.selectedId) sheet = 'none';
+      store.set({ flightSelected: hasFlight, sheet, ...(hasFlight ? { selectedId: null } : {}) });
+    },
+    onStatus(info) {
+      lastFlightInfo = info;
+      mapControls?.setFlights(store.get().flightsOn, info);
+    },
+  });
   let map = null; // { globe, layer } once Cesium is ready
   const staticIndex = buildStaticIndex();
   let searchIndex = staticIndex;
@@ -139,6 +159,7 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       if (!isDesktop()) store.set({ sheet: 'list' });
     },
     select(id) {
+      if (id) flights.clearSelection();
       store.set({ selectedId: id, sheet: isDesktop() ? store.get().sheet : 'detail' });
       if (id) {
         preferences.addRecent(id);
@@ -248,6 +269,7 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
     onChange: (resolved) => {
       map?.globe.setTheme(resolved);
       map?.layer.refreshTheme();
+      flights.refreshTheme();
     },
   });
   createSearchBox({
@@ -290,6 +312,7 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       resetGlobal: () => map?.globe.flyToGlobal(),
       centerSpain: () => flyTo(SPAIN_VIEW),
       toggleMode: () => store.set({ mode: store.get().mode === '2d' ? '3d' : '2d' }),
+      toggleFlights: () => store.set({ flightsOn: !store.get().flightsOn }),
     },
   });
 
@@ -305,7 +328,8 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
   elements.scrim.addEventListener('click', () => store.set({ sheet: 'none' }));
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
-    if (store.get().selectedId) actions.close();
+    if (flights.selectedHex) flights.clearSelection();
+    else if (store.get().selectedId) actions.close();
     else if (store.get().sheet !== 'none') store.set({ sheet: 'none' });
   });
 
@@ -317,6 +341,7 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       cameraId: s.selectedId,
       view: map?.globe.getViewTarget() ?? initial.view,
       mode: s.mode,
+      flights: s.flightsOn,
     });
     const next = `${location.pathname}${query ? `?${query}` : ''}`;
     if (next !== `${location.pathname}${location.search}`) history.replaceState(null, '', next);
@@ -380,6 +405,11 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       bottomNav.update({ sheet: s.sheet, filterCount: countActiveFilters(s.filters) });
     }
 
+    if (changed('flightsOn')) {
+      flights.setEnabled(s.flightsOn);
+      mapControls.setFlights(s.flightsOn, lastFlightInfo);
+    }
+
     if (changed('mode')) {
       mapControls.setMode(s.mode);
       map?.globe.setMode(s.mode);
@@ -405,6 +435,9 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       syncUrl();
     }, 250);
     map.globe.onViewChanged(onView);
+    flights.attach(map.globe);
+    map.globe.onViewChanged(debounce(() => flights.viewChanged(), 600));
+    flights.viewChanged(); // first query as soon as the globe can report its view
   } catch (error) {
     console.error('[globe]', error);
     mapStatus.update({ loading: false, failed: [], stale: [] });

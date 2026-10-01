@@ -1,10 +1,10 @@
-# WORLDVIEW ESPAÑA
+# OJO DEL CULO
 
 Explorador de **cámaras públicas oficiales** sobre un globo 3D (CesiumJS) y un mapa 2D,
 con una sección prioritaria para España: comunidades autónomas, provincias, ciudades,
 Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
 
-> Nombre provisional. Basado técnicamente en
+> Basado técnicamente en
 > [gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) (MIT). Véase
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) para saber qué se reutiliza y por qué no se
 > copió el repositorio completo.
@@ -17,6 +17,7 @@ Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
   centran el mapa y filtran en un radio de 25 km. Que una ciudad aparezca no implica que
   haya cámaras.
 - **Mundo**: añade TfL (Londres) y Fintraffic (Finlandia).
+- **Vuelos en directo** (adsb.lol): aviones en el mapa orientados según su rumbo, con ficha (indicativo, matrícula, modelo, altitud, velocidad) y trayectoria observada.
 - **Globo 3D / mapa 2D** en el mismo visor, con agrupación dinámica de marcadores según el
   zoom, centrado en España y vista global.
 - **Buscador global** (países, comunidades, provincias, ciudades, cámaras y categorías), con

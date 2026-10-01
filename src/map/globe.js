@@ -23,25 +23,19 @@ import {
   ScreenSpaceEventType,
   defined,
 } from '@cesium/engine';
+import { resolveBasemaps } from './basemaps.js';
 
-/**
- * Basemaps: CARTO Positron / Dark Matter (OpenStreetMap data). Keyless; CARTO
- * permits free use with attribution within their fair-use limits — see
- * DATA_SOURCES.md before running a high-traffic commercial deployment.
- */
-const BASEMAPS = {
-  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-};
-const BASEMAP_CREDIT = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+const basemaps = resolveBasemaps(import.meta.env);
+
+/** Cesium renders Credit strings as HTML: escape so a configured attribution can't inject markup. */
+const escapeHtml = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 const createBasemap = (theme) =>
   new ImageryLayer(
     new UrlTemplateImageryProvider({
-      url: BASEMAPS[theme] ?? BASEMAPS.light,
-      subdomains: ['a', 'b', 'c', 'd'],
-      maximumLevel: 18,
-      credit: new Credit(BASEMAP_CREDIT, true),
+      url: basemaps[theme] ?? basemaps.light,
+      maximumLevel: basemaps.maximumLevel,
+      credit: new Credit(escapeHtml(basemaps.attribution), true),
     }),
   );
 

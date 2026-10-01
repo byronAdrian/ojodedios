@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.1 — 2026-10-01
+
+- Nombre de la aplicación: **OJO DEL CULO** (antes WORLDVIEW ESPAÑA). Los identificadores técnicos enviados a los proveedores usan `ojodedios`.
+
+- **Vuelos en directo** (adsb.lol, ODbL): aviones orientados según su rumbo en el globo, refresco cada 15 s solo con la pestaña visible, ficha del avión con la trayectoria observada y botón para activarlos o desactivarlos (`fl=0` en la URL).
+- DGT: catálogo DATEX II v3.6 del NAP (1.952 cámaras, imágenes en etraffic.dgt.es) con la URL antigua como respaldo.
+- Proxy de imágenes: indica el motivo del error.
+
+- Mapa base: CARTO exige ahora clave («API KEY REQUIRED» en producción) → Esri Canvas claro/oscuro sin clave, configurable con `VITE_BASEMAP_*`.
+- Madrid: acepta cualquier ruta de imagen en los hosts oficiales de Informo (el formato del KML había cambiado y se descartaban todas las cámaras).
+- Un catálogo sin cámaras válidas ya no se presenta como «vacío»: la API devuelve `catalog_unusable` con diagnóstico y la interfaz lo muestra como fuente no disponible.
+
 ## 0.1.0 — 2026-10-01
 
 Primera versión de WORLDVIEW ESPAÑA.
