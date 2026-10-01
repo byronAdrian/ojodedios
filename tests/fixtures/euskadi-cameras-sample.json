@@ -1,0 +1,214 @@
+{
+  "totalItems": 487,
+  "totalPages": 25,
+  "currentPage": 1,
+  "cameras": [
+    {
+      "cameraId": "75",
+      "sourceId": "2",
+      "cameraName": "CCTV 232 - Cámara DOMO 232",
+      "latitude": "4792953.64",
+      "longitude": "507650.15",
+      "road": "N - 637",
+      "kilometer": "016+500",
+      "address": "Cruces"
+    },
+    {
+      "cameraId": "76",
+      "sourceId": "2",
+      "cameraName": "DOMO 233",
+      "latitude": "4794032.11",
+      "longitude": "502765.43",
+      "road": "N - 637",
+      "kilometer": "011+000",
+      "address": "Cruces"
+    },
+    {
+      "cameraId": "77",
+      "sourceId": "2",
+      "cameraName": "CCTV 300 - Cámara DOMO nudo Kukularra",
+      "urlImage": "http://www.bizkaimove.com/camaras/cam1.jpg",
+      "latitude": "4794665.86",
+      "longitude": "503178.8",
+      "road": "BI-637",
+      "kilometer": "008+500",
+      "address": "Kurtzes"
+    },
+    {
+      "cameraId": "78",
+      "sourceId": "2",
+      "cameraName": "CCTV 301 - Curvas de Kukularra",
+      "latitude": "4795334.63",
+      "longitude": "502951.74",
+      "road": "BI-637",
+      "kilometer": "009+200",
+      "address": "Kukularra"
+    },
+    {
+      "cameraId": "79",
+      "sourceId": "2",
+      "cameraName": "CCTV 302 - Avanzada",
+      "urlImage": "http://www.bizkaimove.com/camaras/cam3.jpg",
+      "latitude": "4795927.48",
+      "longitude": "502499.74",
+      "road": "BI-637",
+      "kilometer": "010+000",
+      "address": "Kukularra"
+    },
+    {
+      "cameraId": "80",
+      "sourceId": "2",
+      "cameraName": "CCTV 303 - Entrada Túnel Leioa (dir. Getxo)",
+      "urlImage": "http://www.bizkaimove.com/camaras/cam13.jpg",
+      "latitude": "4796823.02",
+      "longitude": "501285.9",
+      "road": "BI-637",
+      "kilometer": "011+650",
+      "address": "Kurtzes"
+    },
+    {
+      "cameraId": "81",
+      "sourceId": "2",
+      "cameraName": "CCTV 304 - DOMO La Avanzada túnel largo",
+      "latitude": "4796989.22",
+      "longitude": "501024.97",
+      "road": "BI-637",
+      "kilometer": "011+920",
+      "address": "Kurtzes"
+    },
+    {
+      "cameraId": "82",
+      "sourceId": "2",
+      "cameraName": "CCTV 305 - DOMO La Avanzada túnel del medio",
+      "latitude": "4797162.77",
+      "longitude": "500777.67",
+      "road": "BI-637",
+      "kilometer": "012+280",
+      "address": "Kurtzes"
+    },
+    {
+      "cameraId": "83",
+      "sourceId": "2",
+      "cameraName": "CCTV 306 - Tunel de Artaza Domo",
+      "latitude": "4797803.85",
+      "longitude": "499912.45",
+      "road": "BI-637",
+      "kilometer": "013+200",
+      "address": "Kukularra"
+    },
+    {
+      "cameraId": "84",
+      "sourceId": "2",
+      "cameraName": "CCTV 309 - Salida Túnel Leioa (dir. Getxo)",
+      "latitude": "4797449.7",
+      "longitude": "500397.9",
+      "road": "BI-637",
+      "kilometer": "012+690",
+      "address": "Kurtzes"
+    },
+    {
+      "cameraId": "85",
+      "sourceId": "2",
+      "cameraName": "CCTV 312 - Rotonda Artaza",
+      "urlImage": "http://www.bizkaimove.com/camaras/cam5.jpg",
+      "latitude": "4797816.62",
+      "longitude": "499855.46",
+      "road": "BI-637",
+      "kilometer": "013+500",
+      "address": "Kurtzes"
+    },
+    {
+      "cameraId": "86",
+      "sourceId": "2",
+      "cameraName": "CCTV 313 - Salida Artea",
+      "latitude": "4798943.94",
+      "longitude": "500232.54",
+      "road": "BI-637",
+      "kilometer": "014+000",
+      "address": "Kurtzes"
+    },
+    {
+      "cameraId": "87",
+      "sourceId": "2",
+      "cameraName": "CCTV 314 - Artea",
+      "urlImage": "http://www.bizkaimove.com/camaras/cam41.jpg",
+      "latitude": "4798899.42",
+      "longitude": "500454.06",
+      "road": "BI-637",
+      "kilometer": "014+500",
+      "address": "Kurtzes"
+    },
+    {
+      "cameraId": "88",
+      "sourceId": "2",
+      "cameraName": "CCTV 315 - Puente Artea",
+      "latitude": "4799388.61",
+      "longitude": "500465.05",
+      "road": "BI-637",
+      "kilometer": "015+300",
+      "address": "Kukularra"
+    },
+    {
+      "cameraId": "89",
+      "sourceId": "2",
+      "cameraName": "CCTV 316 - Báscula bombeo",
+      "urlImage": "http://www.bizkaimove.com/camaras/cam42.jpg",
+      "latitude": "4800423.97",
+      "longitude": "499980.63",
+      "road": "BI-637",
+      "kilometer": "016+400",
+      "address": "Kukularra"
+    },
+    {
+      "cameraId": "90",
+      "sourceId": "2",
+      "cameraName": "CCTV 401 - Bajada de Enekuri",
+      "urlImage": "http://www.bizkaimove.com/camaras/cam50.jpg",
+      "latitude": "4791682.4",
+      "longitude": "503640.1",
+      "road": "BI-604",
+      "kilometer": "003+850",
+      "address": "Asua"
+    },
+    {
+      "cameraId": "91",
+      "sourceId": "2",
+      "cameraName": "CCTV 402 - Bajada de Enekuri",
+      "latitude": "4791874.47",
+      "longitude": "503539.63",
+      "road": "BI-604",
+      "kilometer": "004+030",
+      "address": "Bilbao"
+    },
+    {
+      "cameraId": "92",
+      "sourceId": "2",
+      "cameraName": "CCTV 403 - Chatarrería",
+      "latitude": "4792381.24",
+      "longitude": "503385.38",
+      "road": "BI-604",
+      "kilometer": "004+580",
+      "address": "Bilbao"
+    },
+    {
+      "cameraId": "93",
+      "sourceId": "2",
+      "cameraName": "CCTV 404 - Alto Enekuri",
+      "latitude": "4792929.07",
+      "longitude": "503148.22",
+      "road": "BI-604",
+      "kilometer": "005+220",
+      "address": "Bilbao"
+    },
+    {
+      "cameraId": "94",
+      "sourceId": "2",
+      "cameraName": "CCTV 405 - Subida Enekuri (dir. Túnel)",
+      "latitude": "4793520.52",
+      "longitude": "503767.77",
+      "road": "BI-604",
+      "kilometer": "006+100",
+      "address": "Asua"
+    }
+  ]
+}

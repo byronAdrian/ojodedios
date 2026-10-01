@@ -2,6 +2,10 @@
 
 ## 0.3.0 — 2026-10-01
 
+- **Diseño «Matrix»**: verde fósforo sobre negro en el tema oscuro, con tipografía de terminal para títulos y etiquetas, brillo sutil, líneas de barrido y tinte verde sobre el mapa. Las imágenes de las cámaras no se tiñen. El tema claro pasa a una variante verde «sobre papel». Contraste AA verificado.
+- **Nueva fuente: Open Data Euskadi**, con cámaras del Gobierno Vasco, las diputaciones y los ayuntamientos de Bilbao, Vitoria-Gasteiz y Donostia. La API es paginada y se descarga con concurrencia limitada; las coordenadas UTM se convierten a grados. Las imágenes se sirven por el proxy cerrado y solo se aceptan dominios oficiales; los hosts rechazados se informan en `notes`.
+- **Corrección**: la ficha de una cámara mostraba «No disponible» aunque la imagen hubiera cargado, cuando antes había fallado la miniatura. Ahora el estado se actualiza solo.
+- **Eliminado** el enlace «Zombis» de la barra superior.
 - **Búsqueda de cualquier municipio** (6.849 localidades de España con ≥ 1.000 habitantes, GeoNames CC BY 4.0). Al elegirlo, el mapa se centra y se filtran las cámaras oficiales a 25 km. El enlace se puede compartir (`city=g<id>`). Si no hay cámaras en ese radio, se indica la más cercana y su distancia.
 - El índice de municipios se carga bajo demanda, en un fragmento aparte de unos 116 KB comprimidos, al enfocar el buscador.
 - `npm run data:places` lo regenera de forma reproducible (tarball fijado y verificado con sha512, sin dependencias nuevas).

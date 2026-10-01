@@ -216,6 +216,19 @@ async function main() {
     await close(page);
   });
 
+  await step('detail badge follows the frame: thumbnail failed earlier, full image loads → "Imagen recibida"', async () => {
+    const page = await open('/', { failFrame: 'dgt:i2' });
+    const card = page.locator('.card').filter({ has: page.getByText('CGT Valladolid · cámara 2', { exact: true }) });
+    await card.getByText('No disponible').waitFor(); // the list thumbnail failed
+    // The provider recovers: later frame requests succeed (last registered route wins).
+    await page.route('**/api/frame?*', (route) => route.fulfill({ contentType: 'image/jpeg', body: JPEG }));
+    await card.click();
+    await page.locator('#detail .media__stamp', { hasText: 'Recibida' }).waitFor();
+    await page.locator('#detail .detail__status', { hasText: 'Imagen recibida' }).waitFor();
+    assert.equal(await page.locator('#detail .detail__status', { hasText: 'No disponible' }).count(), 0);
+    await close(page);
+  });
+
   await step('failing frame shows a clear error with retry and original-source link (no black box)', async () => {
     const page = await open('/', { failFrame: 'dgt:i2' });
     await page.locator('.card').filter({ has: page.getByText('CGT Valladolid · cámara 2', { exact: true }) }).click();
@@ -381,16 +394,6 @@ async function main() {
     assert.match(await page.locator('#detail').innerText(), /Vídeo en directo/);
     assert.equal(await page.locator('#detail a', { hasText: 'Fuente original' }).getAttribute('href'), live[0].pageUrl);
     noProblems(page);
-    await close(page);
-  });
-
-  await step('external zombie game link opens safely in a new tab', async () => {
-    const page = await open('/');
-    const link = page.locator('#game-link');
-    assert.equal(await link.isVisible(), true);
-    assert.match(await link.getAttribute('href'), /^https:\/\//);
-    assert.equal(await link.getAttribute('target'), '_blank');
-    assert.equal(await link.getAttribute('rel'), 'noopener noreferrer');
     await close(page);
   });
 

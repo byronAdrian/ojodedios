@@ -2,8 +2,8 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/layout.css';
 import './styles/components.css';
+import './styles/matrix.css';
 import { startApplication } from './app/application.js';
-import { resolveGameUrl } from './ui/gameLink.js';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -35,8 +35,6 @@ new ResizeObserver(([entry]) => {
   document.documentElement.style.setProperty('--mobile-topbar-h', `${height}px`);
 }).observe(document.querySelector('.topbar'));
 
-// External game link: configurable per deployment, https only.
-document.querySelector('#game-link')?.setAttribute('href', resolveGameUrl(import.meta.env.VITE_GAME_URL || undefined));
 
 /** Cesium is loaded lazily so the shell (search, filters, list) paints first. */
 async function createMap({ theme, ionToken, onSelect }) {

@@ -93,6 +93,17 @@ export const PROVIDERS = Object.freeze({
     licenseUrl: 'https://tfl.gov.uk/info-for/open-data-users/',
     sourceUrl: 'https://tfl.gov.uk/traffic/status/',
   },
+  euskadi: {
+    id: 'euskadi',
+    name: 'Open Data Euskadi — Tráfico',
+    shortName: 'Euskadi',
+    countryCode: 'ES',
+    attribution:
+      'Fuente: Open Data Euskadi — Gobierno Vasco, diputaciones forales y ayuntamientos de Bilbao, Vitoria-Gasteiz y Donostia',
+    license: 'Open Data Euskadi — reutilización con atribución',
+    licenseUrl: 'https://opendata.euskadi.eus/catalogo/-/camaras-de-trafico-de-las-administraciones-publicas-de-euskadi/',
+    sourceUrl: 'https://opendata.euskadi.eus/catalogo/-/camaras-de-trafico-de-las-administraciones-publicas-de-euskadi/',
+  },
   livestream: {
     id: 'livestream',
     name: 'Webcams en directo (YouTube)',

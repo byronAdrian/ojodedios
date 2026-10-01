@@ -282,7 +282,7 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       preferences.addRecent(camera.id);
       if (!initial.view) flyTo({ lat: camera.lat, lon: camera.lon, km: 3 });
     } else if (!stillLoading) {
-      if (store.get().filters.scope === 'spain' && !pendingDeepLink.startsWith('dgt:') && !pendingDeepLink.startsWith('madrid:')) {
+      if (store.get().filters.scope === 'spain' && !/^(dgt|madrid|euskadi|livestream):/.test(pendingDeepLink)) {
         loadScope('world'); // a shared foreign camera: fetch the world sources once
         return;
       }
@@ -453,6 +453,10 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
         if (camera && changed('selectedId')) detail.focus();
       }
       map?.layer.setSelected(camera ? s.selectedId : null);
+    } else if (changed('availability') && s.selectedId) {
+      // The open camera's badge must follow what this session observes (e.g. a
+      // thumbnail failed earlier, then the full frame loaded).
+      detail.setObserved(s.availability.get(s.selectedId));
     }
 
     if (changed('sheet') || changed('filters')) {

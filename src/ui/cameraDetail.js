@@ -141,6 +141,14 @@ export function createCameraDetail({ container, actions }) {
     load();
   }
 
+  /** Badge of the open camera; re-rendered when this session's observation changes. */
+  let statusSlot = null;
+
+  /** @param {'online' | 'offline' | undefined} observed */
+  function setObserved(observed) {
+    if (current && statusSlot) render(statusSlot, statusBadge(current, observed));
+  }
+
   /** @param {import('../domain/camera.js').Camera | null} camera @param {{ observed?: string }} [ctx] */
   function show(camera, { observed } = {}) {
     if (camera?.id === current?.id && camera) return;
@@ -163,6 +171,7 @@ export function createCameraDetail({ container, actions }) {
     favButton.addEventListener('click', () => paintFav(actions.toggleFavorite(camera.id)));
 
     const media = h('div', { class: 'media' });
+    statusSlot = h('span', { class: 'detail__status' }, statusBadge(camera, observed));
     const share = async () => {
       const url = actions.shareUrl(camera);
       if (navigator.share && matchMedia('(pointer: coarse)').matches) {
@@ -197,7 +206,7 @@ export function createCameraDetail({ container, actions }) {
         { class: 'detail__body' },
         media,
         h('div', { class: 'card__badges' },
-          statusBadge(camera, observed),
+          statusSlot,
           h('span', { class: 'badge' }, LIVENESS_LABEL[camera.liveness]),
           h('span', { class: 'badge' }, categoryLabel(camera.category))),
         h('div', { class: 'actions' },
@@ -220,6 +229,7 @@ export function createCameraDetail({ container, actions }) {
 
   return {
     show,
+    setObserved,
     get currentId() {
       return current?.id ?? null;
     },

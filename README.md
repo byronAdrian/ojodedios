@@ -36,7 +36,7 @@ Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
 
 ## Fuentes integradas
 
-DGT (red estatal salvo País Vasco y Cataluña), Ayuntamiento de Madrid, TfL y Fintraffic.
+DGT (red estatal salvo País Vasco y Cataluña), Open Data Euskadi (País Vasco, con Bilbao, Vitoria-Gasteiz y Donostia), Ayuntamiento de Madrid, TfL y Fintraffic.
 Las condiciones, la atribución y las limitaciones de cada una están en
 [DATA_SOURCES.md](DATA_SOURCES.md). No se inventan cámaras, ubicaciones ni disponibilidad.
 

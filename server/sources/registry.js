@@ -8,6 +8,7 @@ import { safeFetch, decodeText, UpstreamError } from '../http/safeFetch.js';
 import { DGT_CATALOG_URLS, DGT_ALLOWED_HOSTS, DGT_FRAME_HOSTS, parseDgtCatalog, dgtFrameUrl } from './dgt.js';
 import { MADRID_CATALOG_URL, MADRID_ALLOWED_HOSTS, parseMadridKml, madridFrameUrl } from './madrid.js';
 import { loadLivestreams } from './livestreams.js';
+import { EUSKADI_ALLOWED_HOSTS, loadEuskadiPages, parseEuskadiPages, euskadiFrameUrl, euskadiFrameHosts } from './euskadi.js';
 import { TFL_ALLOWED_HOSTS, tflCatalogUrl, parseTflCatalog } from './tfl.js';
 import {
   FINTRAFFIC_CATALOG_URL,
@@ -23,7 +24,10 @@ import {
  * @property {string} envFlag                 set to "0" to disable
  * @property {(env: Record<string,string|undefined>, deps: object) => Promise<object[]>} loadRaw
  * @property {((nativeId: string) => string | null) | null} frameUrl  only for proxied (http) providers
- * @property {string[]} frameHosts
+ * @property {string[] | ((upstreamUrl: string) => string[])} frameHosts  allowlist for frame fetches
+ *
+ * loadRaw returns the normalized rows, or { rows, notes } when the adapter has
+ * diagnostics worth exposing (e.g. image hosts it refused).
  */
 
 const text = async (url, allowedHosts, deps, headers) =>
@@ -61,6 +65,18 @@ export const SOURCES = Object.freeze({
       parseMadridKml(await text(MADRID_CATALOG_URL, MADRID_ALLOWED_HOSTS, deps), deps),
     frameUrl: madridFrameUrl,
     frameHosts: ['informo.munimadrid.es', 'informo.madrid.es'],
+  },
+  euskadi: {
+    id: 'euskadi',
+    region: 'spain',
+    envFlag: 'SOURCE_EUSKADI_ENABLED',
+    loadRaw: async (env, deps) =>
+      parseEuskadiPages(
+        await loadEuskadiPages((url) => json(url, EUSKADI_ALLOWED_HOSTS, deps, { Accept: 'application/json' })),
+        deps,
+      ),
+    frameUrl: euskadiFrameUrl,
+    frameHosts: euskadiFrameHosts,
   },
   livestream: {
     id: 'livestream',
@@ -100,7 +116,9 @@ export async function loadCatalog(sourceId, { env = process.env, fetchImpl = glo
   const source = SOURCES[sourceId];
   if (!source) throw new Error(`Unknown source: ${sourceId}`);
   const checkedAt = now().toISOString();
-  const raw = await source.loadRaw(env, { fetchImpl, checkedAt });
+  const loaded = await source.loadRaw(env, { fetchImpl, checkedAt });
+  const raw = Array.isArray(loaded) ? loaded : loaded.rows;
+  const notes = Array.isArray(loaded) ? undefined : loaded.notes;
   const seen = new Set();
   const cameras = [];
   let rejected = 0;
@@ -116,5 +134,5 @@ export async function loadCatalog(sourceId, { env = process.env, fetchImpl = glo
   if (!cameras.length) {
     throw new Error(`${sourceId}: el catálogo no contiene cámaras válidas (${raw.length} filas, ${rejected} rechazadas)`);
   }
-  return { sourceId, checkedAt, cameras, rejected };
+  return { sourceId, checkedAt, cameras, rejected, ...(notes ? { notes } : {}) };
 }

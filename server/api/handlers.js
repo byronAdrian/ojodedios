@@ -113,7 +113,7 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
     }
     try {
       const { body } = await safeFetch(upstreamUrl, {
-        allowedHosts: source.frameHosts,
+        allowedHosts: typeof source.frameHosts === 'function' ? source.frameHosts(upstreamUrl) : source.frameHosts,
         timeoutMs: 8_000,
         maxBytes: FRAME_MAX_BYTES,
         fetchImpl,

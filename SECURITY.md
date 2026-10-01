@@ -13,7 +13,7 @@ identificación o seguimiento de personas, ni grabación o archivo de imágenes.
 | Endpoint | Entrada aceptada | Protección |
 |---|---|---|
 | `GET /api/cameras?source=` | id de un proveedor registrado | Lista cerrada (`server/sources/registry.js`); 400 para cualquier otro valor |
-| `GET /api/frame?id=` | `dgt:<1-7 dígitos>` o `madrid:Camara[A-Za-z0-9_-]{1,40}` | **No es un proxy abierto**: la URL se construye en el servidor a partir de una plantilla fija; el cliente nunca aporta URL ni host |
+| `GET /api/frame?id=` | `dgt:<id>`, `madrid:<base64url>` o `euskadi:<base64url>` | **No es un proxy abierto**: la URL se construye y se vuelve a validar en el servidor. Madrid y Euskadi codifican host+ruta: al decodificarlos se exige un host oficial (lista fija o dominio oficial de una administración vasca), una ruta `.jpg/.png` sin `..`, y que no haya credenciales, puerto ni query. La petición y sus redirecciones solo pueden ir a los hosts oficiales del proveedor; en Euskadi, únicamente al host decodificado. |
 | `GET /api/health` | — | No contacta con terceros |
 
 Medidas en `server/http/safeFetch.js` y `server/api/handlers.js`:

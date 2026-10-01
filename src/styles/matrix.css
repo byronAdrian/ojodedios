@@ -1,0 +1,117 @@
+/*
+ * "Matrix" skin: typography and a decorative layer on top of the components.
+ * Colour comes from tokens.css; in the light theme the decorative tokens are
+ * neutral (no glow, no scanlines, no tint), so this file only adds effects in
+ * the dark theme. Camera images are never tinted: they must stay truthful.
+ */
+
+/* ---------- Terminal typography for structure, sans for reading ---------- */
+.brand__word,
+.brand__tag,
+.pane__title,
+.detail__title,
+.mosaic__title,
+.scope-tab,
+.badge,
+.results__summary,
+.facts dt,
+.search__input,
+.search__credit,
+.map-status,
+.media__stamp {
+  font-family: var(--font-display);
+}
+.pane__title,
+.facts dt {
+  letter-spacing: 0.06em;
+}
+.badge {
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Brand: phosphor glow + blinking cursor ---------- */
+.brand__word,
+.brand__tag,
+.brand__mark {
+  text-shadow: var(--glow-text);
+}
+.brand__mark {
+  filter: drop-shadow(var(--glow-text));
+}
+:root[data-theme='dark'] .brand__mark {
+  filter: drop-shadow(0 0 6px rgba(0, 255, 102, 0.6));
+}
+.brand__tag::after {
+  content: '_';
+  margin-left: 1px;
+  animation: matrix-cursor 1.1s steps(1, end) infinite;
+}
+@keyframes matrix-cursor {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- Chrome ---------- */
+:root[data-theme='dark'] .topbar {
+  border-bottom-color: transparent;
+  box-shadow:
+    0 1px 0 rgba(0, 255, 102, 0.22),
+    0 8px 30px rgba(0, 255, 102, 0.05);
+}
+.scope-tab[aria-pressed='true'],
+.btn--primary,
+.chip[aria-pressed='true'] {
+  box-shadow: var(--glow);
+}
+.card[aria-current='true'] {
+  box-shadow: var(--glow), inset 0 0 0 1px var(--accent);
+}
+:root[data-theme='dark'] .card:hover {
+  border-color: var(--border-strong);
+}
+:root[data-theme='dark'] .media {
+  box-shadow: 0 0 0 1px var(--border), var(--glow);
+}
+:root[data-theme='dark'] .badge--accent {
+  text-shadow: var(--glow-text);
+}
+
+/* ---------- Map: green phosphor tint + scanlines (dark only) ---------- */
+.globe::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.45) 100%),
+    var(--map-tint);
+  mix-blend-mode: multiply;
+}
+:root:not([data-theme='dark']) .globe::after {
+  display: none;
+}
+.stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, var(--scanlines) 0 1px, transparent 1px 3px);
+}
+
+/* ---------- Details ---------- */
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+* {
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand__tag::after {
+    animation: none;
+  }
+}
