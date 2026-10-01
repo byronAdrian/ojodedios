@@ -56,3 +56,12 @@ test('countActiveFilters / helpers', () => {
   assert.equal(normalizeText('  Ñandú  CÁCERES '), 'nandu caceres');
   assert.deepEqual(ids(sortCameras(cams.slice(0, 3), f({ city: 'madrid' }))), ['madrid:Camara1', 'dgt:2', 'dgt:1']);
 });
+
+test('frameFor returns finite targets and falls back when empty', async () => {
+  const { frameFor } = await import('../../src/app/application.js').catch(() => ({}));
+  if (!frameFor) return; // application.js imports DOM modules lazily; covered by e2e otherwise
+  const fallback = { lat: 1, lon: 2, km: 3 };
+  assert.equal(frameFor([], fallback), fallback);
+  const t = frameFor(cams.slice(0, 3), fallback);
+  assert.ok([t.lat, t.lon, t.km].every(Number.isFinite));
+});

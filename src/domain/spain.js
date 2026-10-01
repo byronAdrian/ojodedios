@@ -121,7 +121,7 @@ export const QUICK_ACCESS_CITIES = Object.freeze([
 ]);
 
 /** Whole-country framing: peninsula + Balearics; Canarias via its own shortcut. */
-export const SPAIN_VIEW = Object.freeze({ lon: -3.7, lat: 40.0, zoomKm: 1250 });
+export const SPAIN_VIEW = Object.freeze({ lon: -3.7, lat: 40.0, km: 1250 });
 
 /** Radius used when a quick-access city acts as a proximity filter. */
 export const CITY_RADIUS_KM = 25;

@@ -1,0 +1,302 @@
+/* ---------- App frame (mobile first) ---------- */
+:root {
+  /* Measured at runtime from the real top bar (src/main.js); this is only the first-paint fallback. */
+  --mobile-topbar-h: 116px;
+}
+.app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  position: relative;
+  z-index: var(--z-topbar);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'brand scope actions'
+    'search search search';
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: calc(var(--space-2) + var(--safe-top)) calc(var(--space-3) + var(--safe-right)) var(--space-2)
+    calc(var(--space-3) + var(--safe-left));
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+}
+.topbar .topbar__sidebar-toggle {
+  display: none; /* beats .icon-btn's display regardless of source order */
+}
+.brand {
+  grid-area: brand;
+}
+.scope-tabs {
+  grid-area: scope;
+  justify-self: center;
+}
+.search {
+  grid-area: search;
+  min-width: 0;
+}
+.topbar__actions {
+  grid-area: actions;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--globe-bg);
+}
+.globe {
+  position: absolute;
+  inset: 0;
+}
+
+/* Sidebar becomes a bottom sheet on small screens */
+.sidebar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--bottomnav-h) + var(--safe-bottom));
+  z-index: var(--z-sheet);
+  max-height: calc(100dvh - var(--mobile-topbar-h) - var(--bottomnav-h) - var(--safe-bottom) - 8px); /* measured height already includes safe-top */
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(110%);
+  visibility: hidden;
+  transition:
+    transform var(--dur-med) var(--ease-out),
+    visibility 0s linear var(--dur-med);
+}
+.app[data-sheet='list'] .sidebar,
+.app[data-sheet='favorites'] .sidebar,
+.app[data-sheet='filters'] .sidebar {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--dur-med) var(--ease-out);
+}
+.app[data-sheet='filters'] .pane--results,
+.app[data-sheet='list'] .pane--filters,
+.app[data-sheet='favorites'] .pane--filters {
+  display: none;
+}
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  margin: var(--space-2) auto var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  opacity: 0.6;
+  flex: none;
+}
+
+.pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pane--results {
+  flex: 1;
+}
+.pane--filters {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Detail: bottom sheet on mobile */
+.detail {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--bottomnav-h) + var(--safe-bottom));
+  z-index: var(--z-sheet);
+  max-height: calc(100dvh - var(--mobile-topbar-h) - var(--bottomnav-h) - var(--safe-bottom) - 8px); /* measured height already includes safe-top */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-lg);
+}
+.app:not([data-sheet='detail']) .detail {
+  display: none;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-topbar);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: calc(var(--bottomnav-h) + var(--safe-bottom));
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-top: 1px solid var(--border);
+}
+.app {
+  padding-bottom: calc(var(--bottomnav-h) + var(--safe-bottom));
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-sheet) - 1);
+  background: var(--scrim);
+}
+
+.map-controls {
+  position: absolute;
+  right: calc(var(--space-3) + var(--safe-right));
+  top: var(--space-3);
+  z-index: var(--z-map-controls);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.map-status {
+  position: absolute;
+  left: 50%;
+  top: var(--space-3);
+  transform: translateX(-50%);
+  z-index: var(--z-map-controls);
+  max-width: calc(100% - 120px);
+}
+.credits {
+  position: absolute;
+  left: calc(var(--space-2) + var(--safe-left));
+  bottom: var(--space-2);
+  right: 72px;
+  z-index: var(--z-map-controls);
+  pointer-events: none;
+}
+.toast-region {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--bottomnav-h) + var(--safe-bottom) + var(--space-4));
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(92vw, 420px);
+  pointer-events: none;
+}
+
+/* ---------- Tablet / desktop ---------- */
+@media (min-width: 900px) {
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'top top'
+      'side stage';
+    padding-bottom: 0;
+  }
+  .app.is-sidebar-collapsed {
+    grid-template-columns: 0 1fr;
+  }
+  .topbar {
+    grid-area: top;
+    grid-template-columns: auto auto auto minmax(240px, 520px) 1fr;
+    grid-template-areas: 'toggle brand scope search actions';
+    height: calc(var(--topbar-h) + var(--safe-top));
+    padding-top: var(--safe-top);
+    padding-bottom: 0;
+  }
+  .topbar .topbar__sidebar-toggle {
+    display: inline-flex;
+    grid-area: toggle;
+  }
+  .scope-tabs {
+    justify-self: start;
+  }
+  .topbar__actions {
+    justify-self: end;
+  }
+  .sidebar {
+    grid-area: side;
+    position: relative;
+    inset: auto;
+    max-height: none;
+    transform: none;
+    visibility: visible;
+    transition: none;
+    border-radius: 0;
+    border-top: 0;
+    border-right: 1px solid var(--border);
+    box-shadow: none;
+    overflow: hidden;
+    z-index: var(--z-panels);
+  }
+  .app.is-sidebar-collapsed .sidebar {
+    visibility: hidden;
+  }
+  .app .sidebar .pane--filters,
+  .app .sidebar .pane--results {
+    display: flex;
+  }
+  .pane--filters {
+    flex: none;
+    max-height: 48%;
+    border-bottom: 1px solid var(--border);
+  }
+  .sheet-handle,
+  .bottom-nav,
+  .scrim {
+    display: none !important;
+  }
+  .stage {
+    grid-area: stage;
+  }
+  .detail,
+  .app:not([data-sheet='detail']) .detail {
+    display: block;
+    position: absolute;
+    left: auto;
+    top: calc(var(--topbar-h) + var(--safe-top) + var(--space-3));
+    right: var(--space-3);
+    bottom: auto;
+    width: var(--detail-w);
+    max-height: calc(100dvh - var(--topbar-h) - var(--safe-top) - var(--space-6));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-panels);
+  }
+  .detail[hidden] {
+    display: none !important;
+  }
+  .detail:not([hidden]) ~ .map-controls,
+  .app:has(.detail:not([hidden])) .map-controls {
+    right: calc(var(--detail-w) + var(--space-6));
+  }
+  .toast-region {
+    bottom: var(--space-6);
+  }
+  .credits {
+    max-width: 60%;
+  }
+}
+
+@media (min-width: 1400px) {
+  :root {
+    --sidebar-w: 420px;
+    --detail-w: 440px;
+  }
+}

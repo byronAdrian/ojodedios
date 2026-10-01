@@ -34,3 +34,8 @@ test('all 14 requested quick-access cities exist and map to real provinces', () 
   assert.deepEqual(QUICK_ACCESS_CITIES.map((c) => c.id), expected);
   for (const c of QUICK_ACCESS_CITIES) assert.ok(communityOfProvince(c.provinceCode), c.id);
 });
+
+test('SPAIN_VIEW is a valid fly-to target ({lat, lon, km})', async () => {
+  const { SPAIN_VIEW } = await import('../../src/domain/spain.js');
+  assert.ok([SPAIN_VIEW.lat, SPAIN_VIEW.lon, SPAIN_VIEW.km].every(Number.isFinite));
+});
