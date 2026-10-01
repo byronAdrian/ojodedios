@@ -135,7 +135,7 @@ test('safeFetch enforces host allowlist and size limit', async () => {
 test('health lists sources without touching upstreams', async () => {
   const fetchImpl = fakeFetch({});
   const body = await createHandlers({ env: {}, fetchImpl }).health(req('/api/health')).json();
-  assert.deepEqual(body.sources.map((s) => s.id), ['dgt', 'madrid', 'tfl', 'fintraffic']);
+  assert.deepEqual(body.sources.map((s) => s.id), ['dgt', 'madrid', 'livestream', 'tfl', 'fintraffic']);
   assert.equal(fetchImpl.calls.length, 0);
 });
 

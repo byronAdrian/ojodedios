@@ -986,3 +986,22 @@
 .mosaic-toggle[aria-pressed='true'] {
   color: var(--accent);
 }
+
+.media__video {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.live-badge {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  z-index: 1;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: #c81e1e;
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+}

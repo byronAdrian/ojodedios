@@ -22,6 +22,8 @@ Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
   zoom, centrado en España y vista global.
 - **Buscador global** (países, comunidades, provincias, ciudades, cámaras y categorías), con
   *debounce*, en memoria y manejable con teclado.
+- **Vídeo en directo** de webcams públicas emitidas por YouTube (lista ampliable en `server/sources/livestreams.data.js`). La DGT y Madrid publican imágenes periódicas, no vídeo.
+- **Sala de control**: cuadrícula de cámaras que se actualizan solas.
 - **Panel de cámara**: imagen con refresco respetuoso, estados de error claros, proveedor,
   licencia, enlace a la fuente original, centrar en el mapa y compartir.
 - **Contadores honestos**: total, verificadas por el proveedor, con imagen y no disponibles

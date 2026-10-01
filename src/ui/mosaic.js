@@ -43,6 +43,7 @@ export function createMosaic({ container, actions }) {
     if (!visible || document.visibilityState !== 'visible') return;
     let reloads = 0;
     for (const tile of tiles.values()) {
+      if (tile.camera.mediaType !== 'image') continue; // live video tiles have no "received" age
       tile.age.textContent = tile.receivedAt ? `Recibida ${ageLabel(tile.receivedAt)}` : tile.age.textContent;
       if (reloads < MAX_RELOADS_PER_TICK && tile.receivedAt && isDue(tile.camera, tile.receivedAt)) {
         loadTile(tile);
@@ -80,7 +81,12 @@ export function createMosaic({ container, actions }) {
 
     tiles.set(camera.id, tile);
     if (camera.mediaType === 'image' && camera.mediaUrl) loadTile(tile);
-    else age.textContent = 'Sin imagen pública';
+    else if (camera.mediaType === 'youtube' && camera.thumbnailUrl) {
+      // Video plays in the detail panel; a page of a dozen live players would be too heavy.
+      img.src = camera.thumbnailUrl;
+      tile.receivedAt = null;
+      img.addEventListener('load', () => (age.textContent = '▶ Vídeo en directo · abrir'), { once: true });
+    } else age.textContent = 'Sin imagen pública';
 
     return h(
       'li',

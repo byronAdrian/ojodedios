@@ -7,6 +7,7 @@ import { createCamera } from '../../src/domain/camera.js';
 import { safeFetch, decodeText, UpstreamError } from '../http/safeFetch.js';
 import { DGT_CATALOG_URLS, DGT_ALLOWED_HOSTS, DGT_FRAME_HOSTS, parseDgtCatalog, dgtFrameUrl } from './dgt.js';
 import { MADRID_CATALOG_URL, MADRID_ALLOWED_HOSTS, parseMadridKml, madridFrameUrl } from './madrid.js';
+import { loadLivestreams } from './livestreams.js';
 import { TFL_ALLOWED_HOSTS, tflCatalogUrl, parseTflCatalog } from './tfl.js';
 import {
   FINTRAFFIC_CATALOG_URL,
@@ -60,6 +61,14 @@ export const SOURCES = Object.freeze({
       parseMadridKml(await text(MADRID_CATALOG_URL, MADRID_ALLOWED_HOSTS, deps), deps),
     frameUrl: madridFrameUrl,
     frameHosts: ['informo.munimadrid.es', 'informo.madrid.es'],
+  },
+  livestream: {
+    id: 'livestream',
+    region: 'spain',
+    envFlag: 'SOURCE_LIVESTREAM_ENABLED',
+    loadRaw: async (env, deps) => loadLivestreams(deps),
+    frameUrl: null,
+    frameHosts: [],
   },
   tfl: {
     id: 'tfl',

@@ -19,6 +19,7 @@ import { parseTflCatalog } from '../../server/sources/tfl.js';
 import { parseFintrafficCatalog } from '../../server/sources/fintraffic.js';
 import { createCamera } from '../../src/domain/camera.js';
 import { normalizeAdsbLol } from '../../server/sources/flights.js';
+import { loadLivestreams } from '../../server/sources/livestreams.js';
 
 const root = new URL('../../', import.meta.url);
 const fixture = (n) => readFileSync(new URL(`tests/fixtures/${n}`, root), 'utf8');
@@ -339,6 +340,22 @@ async function main() {
     await page.screenshot({ path: 'test-results/desktop-mosaic.png' });
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#mosaic').isVisible(), false);
+    noProblems(page);
+    await close(page);
+  });
+
+  await step('live video: YouTube stream plays muted in the detail panel (privacy-enhanced embed)', async () => {
+    const live = loadLivestreams(ctx).map(createCamera);
+    const page = await open('/');
+    await page.route('**/api/cameras?source=livestream', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, cameras: live }) }));
+    await page.route(/youtube-nocookie\.com|ytimg\.com/, (route) => route.fulfill({ contentType: 'text/html', body: '<html></html>' }));
+    await page.goto(`${base}/?cam=${encodeURIComponent(live[0].id)}`);
+    await page.waitForSelector('#detail:not([hidden]) iframe.media__video', { timeout: 15_000 });
+    const src = await page.locator('iframe.media__video').getAttribute('src');
+    assert.match(src, /^https:\/\/www\.youtube-nocookie\.com\/embed\/[\w-]{11}\?autoplay=1&mute=1/);
+    assert.match(await page.locator('#detail').innerText(), /Vídeo en directo/);
+    assert.equal(await page.locator('#detail a', { hasText: 'Fuente original' }).getAttribute('href'), live[0].pageUrl);
     noProblems(page);
     await close(page);
   });

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-10-01
+
+- **Vídeo en directo**: nueva fuente de webcams públicas emitidas por YouTube, con una lista revisada a mano en `server/sources/livestreams.data.js`. Se reproducen silenciadas al empezar, con el reproductor sin cookies (`youtube-nocookie.com`). En el listado y en la sala de control aparecen con el distintivo «EN DIRECTO».
+- **Sala de control**: cuadrícula paginada de cámaras que se actualizan solas según la frecuencia de cada proveedor, con indicador «Recibida hace X». Se pausa con la pestaña oculta. Se guarda en la URL (`mos=1`).
+- CSP: `frame-src https://www.youtube-nocookie.com` y miniaturas de `i.ytimg.com`.
+
 ## 0.1.1 — 2026-10-01
 
 - Nombre de la aplicación: **OJO DEL CULO** (antes WORLDVIEW ESPAÑA). Los identificadores técnicos enviados a los proveedores usan `ojodedios`.

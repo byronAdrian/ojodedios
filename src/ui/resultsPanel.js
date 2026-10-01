@@ -52,9 +52,11 @@ export function createResultsPanel({ container, actions }) {
     const provider = getProvider(camera.providerId);
     const observed = availability.get(camera.id);
     const thumb = h('div', { class: 'card__thumb' }, icon('camera'));
-    if (camera.mediaType === 'image' && camera.mediaUrl && observed !== 'offline') {
+    const thumbSrc = camera.mediaType === 'image' ? camera.mediaUrl : camera.thumbnailUrl;
+    if (camera.liveness === 'live') thumb.append(h('span', { class: 'live-badge' }, '● EN DIRECTO'));
+    if (thumbSrc && observed !== 'offline') {
       const img = h('img', {
-        src: camera.mediaUrl,
+        src: thumbSrc,
         alt: '',
         loading: 'lazy',
         decoding: 'async',
