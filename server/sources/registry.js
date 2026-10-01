@@ -5,7 +5,7 @@
  */
 import { createCamera } from '../../src/domain/camera.js';
 import { safeFetch, decodeText, UpstreamError } from '../http/safeFetch.js';
-import { DGT_CATALOG_URLS, DGT_ALLOWED_HOSTS, parseDgtCatalog, dgtFrameUrl } from './dgt.js';
+import { DGT_CATALOG_URLS, DGT_ALLOWED_HOSTS, DGT_FRAME_HOSTS, parseDgtCatalog, dgtFrameUrl } from './dgt.js';
 import { MADRID_CATALOG_URL, MADRID_ALLOWED_HOSTS, parseMadridKml, madridFrameUrl } from './madrid.js';
 import { TFL_ALLOWED_HOSTS, tflCatalogUrl, parseTflCatalog } from './tfl.js';
 import {
@@ -50,7 +50,7 @@ export const SOURCES = Object.freeze({
     envFlag: 'SOURCE_DGT_ENABLED',
     loadRaw: async (env, deps) => parseDgtCatalog(await firstAvailable(DGT_CATALOG_URLS, DGT_ALLOWED_HOSTS, deps), deps),
     frameUrl: dgtFrameUrl,
-    frameHosts: ['infocar.dgt.es'],
+    frameHosts: DGT_FRAME_HOSTS,
   },
   madrid: {
     id: 'madrid',

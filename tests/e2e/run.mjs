@@ -210,7 +210,7 @@ async function main() {
   });
 
   await step('failing frame shows a clear error with retry and original-source link (no black box)', async () => {
-    const page = await open('/', { failFrame: 'dgt:2' });
+    const page = await open('/', { failFrame: 'dgt:i2' });
     await page.locator('.card').filter({ has: page.getByText('CGT Valladolid · cámara 2', { exact: true }) }).click();
     await page.waitForSelector('.media__overlay[role="alert"]', { timeout: 10_000 });
     const text = await page.locator('.media__overlay[role="alert"]').innerText();
@@ -221,7 +221,7 @@ async function main() {
   });
 
   await step('shared camera link restores the camera (deep link)', async () => {
-    const page = await open('/?cam=dgt%3A215');
+    const page = await open('/?cam=dgt%3Ai215');
     await page.waitForSelector('#detail:not([hidden])');
     assert.match(await page.locator('#detail-title').innerText(), /Malaga · cámara 215/);
     await close(page);

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseDgtCatalog, dgtFrameUrl, prettifyDgtName } from '../../server/sources/dgt.js';
+import { parseDgtCatalog, dgtFrameUrl, dgtNativeId, prettifyDgtName } from '../../server/sources/dgt.js';
 import { parseMadridKml, madridFrameUrl, madridNativeId, madridImageKey } from '../../server/sources/madrid.js';
 import { parseTflCatalog } from '../../server/sources/tfl.js';
 import { parseFintrafficCatalog } from '../../server/sources/fintraffic.js';
@@ -24,15 +24,15 @@ test('DGT: parses real records, assigns region by coordinates, skips rows withou
   const cams = rows.map(createCamera);
   assert.ok(cams.every(Boolean));
   const byId = Object.fromEntries(cams.map((c) => [c.id, c]));
-  assert.equal(byId['dgt:2'].provinceCode, 'ES-P');
-  assert.equal(byId['dgt:2'].communityCode, 'ES-CL');
-  assert.equal(byId['dgt:2'].mediaUrl, '/api/frame?id=dgt:2');
-  assert.equal(byId['dgt:597'].communityCode, 'ES-MD');
-  assert.equal(byId['dgt:215'].provinceCode, 'ES-MA');
+  assert.equal(byId['dgt:i2'].provinceCode, 'ES-P');
+  assert.equal(byId['dgt:i2'].communityCode, 'ES-CL');
+  assert.equal(byId['dgt:i2'].mediaUrl, '/api/frame?id=dgt:i2');
+  assert.equal(byId['dgt:i597'].communityCode, 'ES-MD');
+  assert.equal(byId['dgt:i215'].provinceCode, 'ES-MA');
   // Managed by "CGT Valencia" but physically in Murcia: we trust coordinates, not the label.
-  assert.equal(byId['dgt:122'].provinceCode, 'ES-MU');
-  assert.equal(byId['dgt:2'].status, 'listed');
-  assert.equal(byId['dgt:2'].city, null, 'DGT does not publish municipality; never invented');
+  assert.equal(byId['dgt:i122'].provinceCode, 'ES-MU');
+  assert.equal(byId['dgt:i2'].status, 'listed');
+  assert.equal(byId['dgt:i2'].city, null, 'DGT does not publish municipality; never invented');
 });
 
 test('DGT: unknown format fails loudly instead of returning an empty catalog', () => {
@@ -41,9 +41,19 @@ test('DGT: unknown format fails loudly instead of returning an empty catalog', (
   assert.throws(() => parseDgtCatalog(noImages, ctx), /1 registros sin imagen reconocible.*nueva\.dgt\.es/);
 });
 
-test('DGT frame URL only accepts numeric ids', () => {
-  assert.equal(dgtFrameUrl('31'), 'http://infocar.dgt.es/etraffic/data/camaras/31.jpg');
-  for (const bad of ['', '../x', '1?a', '12345678', 'http://evil', '1%2F2']) assert.equal(dgtFrameUrl(bad), null, bad);
+test('DGT frame URLs: v3.6 numeric ids and legacy i-prefixed ids only', () => {
+  assert.equal(dgtFrameUrl('176130'), 'https://etraffic.dgt.es/camarasEtraffic/176130.jpg');
+  assert.equal(dgtFrameUrl('i31'), 'http://infocar.dgt.es/etraffic/data/camaras/31.jpg');
+  for (const bad of ['', '../x', '1?a', '1234567890', 'http://evil', '1%2F2', 'i', 'x31']) assert.equal(dgtFrameUrl(bad), null, bad);
+  assert.equal(dgtNativeId('https://etraffic.dgt.es/camarasEtraffic/176130.jpg'), '176130');
+  assert.equal(dgtNativeId('https://evil.example/camarasEtraffic/1.jpg'), null);
+});
+
+test('DGT: v3.6 production image URLs are accepted (format seen on 2026-10-01)', () => {
+  const xml = '<device><value>A-1 PK 12</value><latitude>40.5</latitude><longitude>-3.6</longitude><urlLinkAddress>https://etraffic.dgt.es/camarasEtraffic/176130.jpg</urlLinkAddress></device>'.repeat(1);
+  const [cam] = parseDgtCatalog(`<root>${xml}</root>`, ctx).map(createCamera);
+  assert.equal(cam.id, 'dgt:176130');
+  assert.equal(cam.mediaUrl, '/api/frame?id=dgt:176130');
 });
 
 test('DGT names are readable', () => {
@@ -116,7 +126,7 @@ test('DGT: v3-style records are found structurally whatever the element names', 
       <fac:urlLinkAddress>https://infocar.dgt.es/etraffic/data/camaras/31.jpg</fac:urlLinkAddress></fac:device>
     <fac:device id="CAM-32"><com:value>Sin imagen</com:value><loc:latitude>41</loc:latitude><loc:longitude>-4</loc:longitude><x>https://infocar.dgt.es/etraffic/data/camaras/32.jpg</x></fac:device></d2:payload>`;
   const cams = parseDgtCatalog(xml, ctx).map(createCamera);
-  assert.deepEqual(cams.map((c) => c.id), ['dgt:31', 'dgt:32']);
+  assert.deepEqual(cams.map((c) => c.id), ['dgt:i31', 'dgt:i32']);
   assert.equal(cams[0].name, 'A-6 Pk 20 · cámara 31');
   assert.equal(cams[0].provinceCode, 'ES-M');
 });

@@ -19,7 +19,20 @@ export const DGT_CATALOG_URLS = Object.freeze([
   'https://infocar.dgt.es/datex2/dgt/CCTVSiteTablePublication/all/content.xml',
 ]);
 export const DGT_ALLOWED_HOSTS = ['infocar.dgt.es', 'nap.dgt.es'];
-const FRAME_PATH = /\/etraffic\/data\/camaras\/(\d{1,7})\.jpg$/i;
+export const DGT_FRAME_HOSTS = ['etraffic.dgt.es', 'infocar.dgt.es'];
+// v3.6 feed (verified in production 2026-10-01): https://etraffic.dgt.es/camarasEtraffic/176130.jpg
+const FRAME_V36 = /^https?:\/\/etraffic\.dgt\.es\/camarasEtraffic\/(\d{1,9})\.jpg$/i;
+// legacy feed: http://infocar.dgt.es/etraffic/data/camaras/31.jpg → native id "i31"
+const FRAME_LEGACY = /^https?:\/\/infocar\.dgt\.es\/etraffic\/data\/camaras\/(\d{1,7})\.jpg$/i;
+
+/** Native id for an accepted DGT image URL, or null. */
+export function dgtNativeId(imageUrl) {
+  const url = String(imageUrl).trim();
+  const v36 = FRAME_V36.exec(url);
+  if (v36) return String(Number(v36[1]));
+  const legacy = FRAME_LEGACY.exec(url);
+  return legacy ? `i${Number(legacy[1])}` : null;
+}
 const URL_IN_TEXT = /https?:\/\/[^\s"'<>]+?\.jpe?g\b/i;
 const OPEN_TAG = /<(?:[A-Za-z_][\w.-]*:)?([A-Za-z_][\w.-]*)[\s>]/g;
 
@@ -56,8 +69,9 @@ const recordName = (record) =>
 
 /** Upstream frame URL for a validated DGT native id. */
 export function dgtFrameUrl(nativeId) {
-  if (!/^\d{1,7}$/.test(nativeId)) return null;
-  return `http://infocar.dgt.es/etraffic/data/camaras/${nativeId}.jpg`;
+  if (/^\d{1,9}$/.test(nativeId)) return `https://etraffic.dgt.es/camarasEtraffic/${nativeId}.jpg`;
+  const legacy = /^i(\d{1,7})$/.exec(nativeId);
+  return legacy ? `http://infocar.dgt.es/etraffic/data/camaras/${legacy[1]}.jpg` : null;
 }
 
 /** "CAMARA-CGT VALLADOLID_2" → "CGT Valladolid · cámara 2" (readable, still faithful). */
@@ -88,18 +102,17 @@ export function parseDgtCatalog(xml, { checkedAt }) {
   let sampleRejected = '';
   for (const record of records) {
     const imageUrl = recordImageUrl(record);
-    const match = FRAME_PATH.exec(imageUrl);
-    if (!match) {
+    const nativeId = dgtNativeId(imageUrl);
+    if (!nativeId) {
       sampleRejected ||= imageUrl || '(sin urlLinkAddress)';
       continue;
     }
-    const nativeId = String(Number(match[1]));
     const lat = Number(firstText(record, 'latitude'));
     const lon = Number(firstText(record, 'longitude'));
     const region = lookupSpanishRegion(lat, lon);
     out.push({
       id: `dgt:${nativeId}`,
-      name: prettifyDgtName(recordName(record), nativeId),
+      name: prettifyDgtName(recordName(record), nativeId.replace(/^i/, '')),
       countryCode: 'ES',
       communityCode: region?.communityCode ?? null,
       provinceCode: region?.provinceCode ?? null,

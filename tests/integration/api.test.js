@@ -77,7 +77,7 @@ test('unknown source → 400; disabled source → empty list; POST → 405', asy
 test('frame proxy builds the upstream URL itself and validates image bytes', async () => {
   const fetchImpl = fakeFetch({ 'http://infocar.dgt.es/etraffic/data/camaras/31.jpg': new Response(JPEG, { headers: { 'content-type': 'image/jpeg' } }) });
   const { frame } = createHandlers({ env: {}, fetchImpl });
-  const res = await frame(req('/api/frame?id=dgt:31'));
+  const res = await frame(req('/api/frame?id=dgt:i31'));
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('content-type'), 'image/jpeg');
   assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
@@ -100,8 +100,8 @@ test('frame proxy rejects HTML served as image and redirects off the allowlist',
     'http://infocar.dgt.es/etraffic/data/camaras/2.jpg': new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/admin' } }),
   });
   const { frame } = createHandlers({ env: {}, fetchImpl });
-  assert.equal((await frame(req('/api/frame?id=dgt:1'))).status, 502);
-  assert.equal((await frame(req('/api/frame?id=dgt:2'))).status, 502);
+  assert.equal((await frame(req('/api/frame?id=dgt:i1'))).status, 502);
+  assert.equal((await frame(req('/api/frame?id=dgt:i2'))).status, 502);
   assert.ok(!fetchImpl.calls.includes('http://127.0.0.1/admin'));
 });
 
@@ -111,16 +111,16 @@ test('frame proxy follows an allowlisted http→https redirect', async () => {
     'https://infocar.dgt.es/etraffic/data/camaras/3.jpg': new Response(JPEG),
   });
   const { frame } = createHandlers({ env: {}, fetchImpl });
-  assert.equal((await frame(req('/api/frame?id=dgt:3'))).status, 200);
+  assert.equal((await frame(req('/api/frame?id=dgt:i3'))).status, 200);
 });
 
 test('frame proxy rate-limits per client', async () => {
   const fetchImpl = fakeFetch({ 'http://infocar.dgt.es/etraffic/data/camaras/4.jpg': new Response(JPEG) });
   const { frame } = createHandlers({ env: { FRAME_RATE_LIMIT_PER_MIN: '2' }, fetchImpl });
   const headers = { 'x-forwarded-for': '203.0.113.9' };
-  await frame(req('/api/frame?id=dgt:4', { headers }));
-  await frame(req('/api/frame?id=dgt:4', { headers }));
-  assert.equal((await frame(req('/api/frame?id=dgt:4', { headers }))).status, 429);
+  await frame(req('/api/frame?id=dgt:i4', { headers }));
+  await frame(req('/api/frame?id=dgt:i4', { headers }));
+  assert.equal((await frame(req('/api/frame?id=dgt:i4', { headers }))).status, 429);
 });
 
 test('safeFetch enforces host allowlist and size limit', async () => {
@@ -174,4 +174,10 @@ test('DGT tries the v3.6 NAP feed first and falls back to the legacy URL only on
   const down = fakeFetch({ [DGT_V36]: new Response('x', { status: 503 }) });
   assert.equal((await createHandlers({ env: {}, fetchImpl: down }).cameras(req('/api/cameras?source=dgt'))).status, 502);
   assert.deepEqual(down.calls, [DGT_V36], 'a 5xx does not silently switch to another feed');
+});
+
+test('frame proxy serves v3.6 DGT ids from etraffic.dgt.es over https', async () => {
+  const fetchImpl = fakeFetch({ 'https://etraffic.dgt.es/camarasEtraffic/176130.jpg': new Response(JPEG) });
+  const { frame } = createHandlers({ env: {}, fetchImpl });
+  assert.equal((await frame(req('/api/frame?id=dgt:176130'))).status, 200);
 });
