@@ -55,6 +55,7 @@ export const COUNTRY_NAMES = Object.freeze({
   ES: 'España',
   GB: 'Reino Unido',
   FI: 'Finlandia',
+  US: 'Estados Unidos',
 });
 export const countryName = (code) => COUNTRY_NAMES[code] ?? code;
 
@@ -92,6 +93,16 @@ export const PROVIDERS = Object.freeze({
     license: 'TfL Open Data terms — atribución requerida',
     licenseUrl: 'https://tfl.gov.uk/info-for/open-data-users/',
     sourceUrl: 'https://tfl.gov.uk/traffic/status/',
+  },
+  caltrans: {
+    id: 'caltrans',
+    name: 'Caltrans — California Department of Transportation (CWWP2)',
+    shortName: 'Caltrans',
+    countryCode: 'US',
+    attribution: 'Fuente: California Department of Transportation (Caltrans), CWWP2',
+    license: 'Datos públicos de Caltrans CWWP2 — uso con atribución',
+    licenseUrl: 'https://cwwp2.dot.ca.gov/documentation/cctv/cctv.htm',
+    sourceUrl: 'https://quickmap.dot.ca.gov/',
   },
   euskadi: {
     id: 'euskadi',

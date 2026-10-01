@@ -4,6 +4,7 @@
  *
  * Params: scope=es|world · ca · pr · city (quick city or place `g…`) · country · cat (comma list) ·
  *         st (status) · q · fav=1 · cam (camera id) · at=lat,lon,km · mode=2d · fl=0 (flights off) · mos=1 (control room)
+ *         · cams=0 (camera markers off) · eq=0 (earthquakes off) · fi=1 (fires on)
  */
 import { getCommunity, getProvince, getQuickCity, communityOfProvince } from '../domain/spain.js';
 import { CATEGORIES, COUNTRY_NAMES } from '../domain/camera.js';
@@ -16,7 +17,8 @@ const CAMERA_ID = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,240}$/;
 
 /**
  * @typedef {{ lat: number, lon: number, km: number }} ViewTarget
- * @typedef {{ filters: import('../domain/filters.js').FilterState, cameraId: string | null, view: ViewTarget | null, mode: '3d' | '2d', flights?: boolean, mosaic?: boolean }} UrlState
+ * @typedef {{ filters: import('../domain/filters.js').FilterState, cameraId: string | null, view: ViewTarget | null, mode: '3d' | '2d',
+ *   flights?: boolean, mosaic?: boolean, cameras?: boolean, quakes?: boolean, fires?: boolean }} UrlState
  */
 
 /** @returns {UrlState} */
@@ -54,11 +56,21 @@ export function parseUrlState(search) {
       Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && km > 0.05 && km <= 40_000) {
     view = { lat, lon, km };
   }
-  return { filters, cameraId, view, mode: params.get('mode') === '2d' ? '2d' : '3d', flights: params.get('fl') !== '0', mosaic: params.get('mos') === '1' };
+  return {
+    filters,
+    cameraId,
+    view,
+    mode: params.get('mode') === '2d' ? '2d' : '3d',
+    flights: params.get('fl') !== '0',
+    mosaic: params.get('mos') === '1',
+    cameras: params.get('cams') !== '0',
+    quakes: params.get('eq') !== '0',
+    fires: params.get('fi') === '1',
+  };
 }
 
 /** @param {UrlState} state @returns {string} query string without "?" ('' when default) */
-export function serializeUrlState({ filters, cameraId, view, mode, flights = true, mosaic = false }) {
+export function serializeUrlState({ filters, cameraId, view, mode, flights = true, mosaic = false, cameras = true, quakes = true, fires = false }) {
   const params = new URLSearchParams();
   if (filters.scope === 'world') params.set('scope', 'world');
   if (filters.scope === 'world' && filters.country) params.set('country', filters.country);
@@ -74,6 +86,9 @@ export function serializeUrlState({ filters, cameraId, view, mode, flights = tru
   if (mode === '2d') params.set('mode', '2d');
   if (!flights) params.set('fl', '0');
   if (mosaic) params.set('mos', '1');
+  if (!cameras) params.set('cams', '0');
+  if (!quakes) params.set('eq', '0');
+  if (fires) params.set('fi', '1');
   return params.toString();
 }
 

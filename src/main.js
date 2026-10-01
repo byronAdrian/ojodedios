@@ -18,6 +18,7 @@ const elements = {
   resultsPane: $('#results-pane'),
   detail: $('#detail'),
   flightDetail: $('#flight-detail'),
+  hazardCard: $('#hazard-card'),
   mosaic: $('#mosaic'),
   mapControls: $('#map-controls'),
   mapStatus: $('#map-status'),
@@ -38,14 +39,15 @@ new ResizeObserver(([entry]) => {
 
 /** Cesium is loaded lazily so the shell (search, filters, list) paints first. */
 async function createMap({ theme, ionToken, onSelect }) {
-  const [{ createGlobe }, { createCameraLayer }, { createFlightLayer }] = await Promise.all([
+  const [{ createGlobe }, { createCameraLayer }, { createFlightLayer }, { createHazardLayer }] = await Promise.all([
     import('./map/globe.js'),
     import('./map/cameraLayer.js'),
     import('./flights/flightLayer.js'),
+    import('./hazards/hazardLayer.js'),
   ]);
   const globe = createGlobe(elements.globe, { theme, creditContainer: elements.credits, ionToken });
   const layer = createCameraLayer(globe, { onSelect });
-  return { globe, layer, createFlightLayer };
+  return { globe, layer, createFlightLayer, createHazardLayer };
 }
 
 startApplication({

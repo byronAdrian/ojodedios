@@ -4,8 +4,64 @@
  */
 import { h, icon, render } from './dom.js';
 
-/** @param {{ container: HTMLElement, actions: { zoomIn, zoomOut, resetGlobal, centerSpain, toggleMode, toggleFlights, toggleMosaic } }} deps */
+const LAYERS = [
+  { key: 'cameras', label: 'Cámaras' },
+  { key: 'flights', label: 'Vuelos en directo' },
+  { key: 'quakes', label: 'Terremotos (USGS)' },
+  { key: 'fires', label: 'Incendios (NASA FIRMS)' },
+];
+
+/**
+ * @param {{ container: HTMLElement, actions: { zoomIn, zoomOut, resetGlobal, centerSpain, toggleMode, toggleFlights,
+ *   toggleMosaic, setLayer: (key: string, on: boolean) => void } }} deps
+ */
 export function createMapControls({ container, actions }) {
+  const layersPanel = h('div', { class: 'layers-panel', id: 'layers-panel', role: 'group', 'aria-labelledby': 'layers-title', hidden: true });
+  const layersButton = h('button', {
+    type: 'button',
+    class: 'icon-btn',
+    'aria-expanded': 'false',
+    'aria-controls': 'layers-panel',
+    'aria-label': 'Capas del mapa',
+    title: 'Capas del mapa',
+    onClick: () => setPanelOpen(layersPanel.hidden),
+  }, icon('layers'));
+  let layerState = {};
+
+  function setPanelOpen(open) {
+    layersPanel.hidden = !open;
+    layersButton.setAttribute('aria-expanded', String(open));
+    if (open) layersPanel.querySelector('input')?.focus();
+  }
+  const onDocumentPointer = (event) => {
+    if (!layersPanel.hidden && !layersPanel.contains(event.target) && !layersButton.contains(event.target)) setPanelOpen(false);
+  };
+  const onKey = (event) => {
+    if (event.key === 'Escape' && !layersPanel.hidden) {
+      setPanelOpen(false);
+      layersButton.focus();
+    }
+  };
+  document.addEventListener('pointerdown', onDocumentPointer);
+  document.addEventListener('keydown', onKey);
+
+  function paintLayers() {
+    render(
+      layersPanel,
+      h('p', { class: 'layers-panel__title', id: 'layers-title' }, 'Capas'),
+      ...LAYERS.map(({ key, label }) => {
+        const state = layerState[key] ?? { on: false, detail: '' };
+        const id = `layer-${key}`;
+        return h('label', { class: 'layers-panel__row', for: id },
+          h('input', { type: 'checkbox', id, checked: state.on, onChange: (e) => actions.setLayer(key, e.target.checked) }),
+          h('span', { class: `layers-panel__swatch layers-panel__swatch--${key}`, 'aria-hidden': 'true' }),
+          h('span', { class: 'layers-panel__text' },
+            h('span', { class: 'layers-panel__label' }, label),
+            state.detail ? h('span', { class: 'layers-panel__detail' }, state.detail) : null));
+      }),
+    );
+  }
+
   const modeButton = h('button', { type: 'button', class: 'icon-btn', onClick: actions.toggleMode });
   const flightsButton = h('button', { type: 'button', class: 'icon-btn flights-toggle', onClick: actions.toggleFlights });
   const mosaicButton = h('button', { type: 'button', class: 'icon-btn mosaic-toggle', onClick: actions.toggleMosaic, 'aria-pressed': 'false', 'aria-label': 'Sala de control: ver varias cámaras a la vez', title: 'Sala de control' }, icon('grid'));
@@ -18,9 +74,19 @@ export function createMapControls({ container, actions }) {
       h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Centrar en España', title: 'Centrar en España', onClick: actions.centerSpain }, icon('target')),
       h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Vista global del planeta', title: 'Vista global', onClick: actions.resetGlobal }, icon('globe')),
       modeButton),
-    h('div', { class: 'control-group', role: 'group', 'aria-label': 'Capas' }, flightsButton, mosaicButton),
+    h('div', { class: 'control-group', role: 'group', 'aria-label': 'Capas' }, layersButton, flightsButton, mosaicButton),
+    layersPanel,
   );
+  paintLayers();
   return {
+    /** @param {Record<string, { on: boolean, detail: string }>} state */
+    setLayers(state) {
+      layerState = state;
+      // Re-rendering replaces the checkboxes: give focus back to the one being toggled.
+      const active = document.activeElement?.id;
+      paintLayers();
+      if (active?.startsWith('layer-')) layersPanel.querySelector(`#${active}`)?.focus();
+    },
     setMosaic(on) {
       mosaicButton.setAttribute('aria-pressed', String(on));
     },

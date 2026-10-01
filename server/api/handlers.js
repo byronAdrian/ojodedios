@@ -8,6 +8,8 @@ import { safeFetch, UpstreamError } from '../http/safeFetch.js';
 import { createRateLimiter, clientKey } from './rateLimit.js';
 import { createOpenSkyClient, openskyTtlMs } from '../sources/opensky.js';
 import { FLIGHT_PROVIDERS, TRACE_PROVIDERS, normalizeAdsbLol, quantiseFlightQuery, validHex, traceUrl, parseTrace } from '../sources/flights.js';
+import { USGS_FEED_URL, USGS_ALLOWED_HOSTS, USGS_ATTRIBUTION, parseUsgsFeed } from '../sources/usgs.js';
+import { FIRMS_HOST, FIRMS_ATTRIBUTION, quantiseFireBbox, firmsUrl, parseFirmsCsv } from '../sources/firms.js';
 
 const CATALOG_TTL_MS = 15 * 60 * 1000;
 const FRAME_MAX_BYTES = 3 * 1024 * 1024;
@@ -278,6 +280,105 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
     return jsonResponse(502, { error: 'trace_unavailable', message: failures.join(' · ').slice(0, 400) }, { 'Cache-Control': 'public, s-maxage=15' });
   }
 
+  // ---------- natural hazards ----------
+  const QUAKE_TTL_MS = 120_000;
+  const FIRE_TTL_MS = 15 * 60_000;
+  /** key → { at, body } ; quakes use the single key "all". */
+  const hazardCache = new Map();
+  const hazardPending = new Map();
+
+  /** Coalesced, cached fetch of one hazard document; serves the last good copy when upstream fails. */
+  async function cachedHazard(key, ttl, load) {
+    const t = now().getTime();
+    const hit = hazardCache.get(key);
+    if (hit && t - hit.at < ttl) return { body: hit.body, age: t - hit.at };
+    if (!hazardPending.has(key)) {
+      hazardPending.set(key, load().then(
+        (body) => {
+          if (hazardCache.size > 300) hazardCache.delete(hazardCache.keys().next().value);
+          hazardCache.set(key, { at: now().getTime(), body });
+          return body;
+        },
+      ).finally(() => hazardPending.delete(key)));
+    }
+    try {
+      return { body: await hazardPending.get(key), age: 0 };
+    } catch (error) {
+      if (hit) return { body: { ...hit.body, stale: true }, age: t - hit.at };
+      throw error;
+    }
+  }
+
+  const hazardError = (error, label) => {
+    const upstream = error instanceof UpstreamError;
+    return jsonResponse(upstream ? 502 : 500, {
+      error: upstream ? 'upstream_unavailable' : 'feed_unusable',
+      message: `${label}: ${String(error?.message || error).slice(0, 200)}`,
+    }, { 'Cache-Control': 'public, s-maxage=60' });
+  };
+
+  async function quakes(request) {
+    const blocked = methodGuard(request);
+    if (blocked) return blocked;
+    if (String(env.SOURCE_QUAKES_ENABLED ?? '1') === '0') {
+      return jsonResponse(200, { enabled: false, events: [] }, { 'Cache-Control': 'public, s-maxage=300' });
+    }
+    try {
+      const { body } = await cachedHazard('quakes', QUAKE_TTL_MS, async () => {
+        const { body: bytes } = await safeFetch(USGS_FEED_URL, { allowedHosts: USGS_ALLOWED_HOSTS, timeoutMs: 10_000, maxBytes: 10 * 1024 * 1024, fetchImpl, headers: { Accept: 'application/geo+json, application/json' } });
+        return {
+          enabled: true,
+          source: 'usgs',
+          attribution: USGS_ATTRIBUTION,
+          fetchedAt: now().toISOString(),
+          refreshSeconds: QUAKE_TTL_MS / 1000,
+          events: parseUsgsFeed(JSON.parse(new TextDecoder().decode(bytes))),
+        };
+      });
+      return jsonResponse(200, body, { 'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=600' });
+    } catch (error) {
+      console.warn('[quakes]', error?.message || error);
+      return hazardError(error, 'USGS');
+    }
+  }
+
+  async function fires(request) {
+    const blocked = methodGuard(request);
+    if (blocked) return blocked;
+    if (String(env.SOURCE_FIRES_ENABLED ?? '1') === '0') {
+      return jsonResponse(200, { enabled: false, reason: 'disabled', points: [] }, { 'Cache-Control': 'public, s-maxage=300' });
+    }
+    const bbox = quantiseFireBbox(new URL(request.url).searchParams.get('bbox'));
+    if (!bbox) return jsonResponse(400, { error: 'invalid_bbox', message: 'Zona no válida o demasiado grande: acerca el mapa' });
+    const upstreamUrl = firmsUrl(env.FIRMS_MAP_KEY, bbox);
+    if (!upstreamUrl) {
+      // Missing/invalid key: an honest, cacheable "not configured" — never a fake empty map.
+      return jsonResponse(200, { enabled: false, reason: 'missing_key', points: [] }, { 'Cache-Control': 'public, s-maxage=300' });
+    }
+    const key = `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`;
+    try {
+      const { body } = await cachedHazard(`fires:${key}`, FIRE_TTL_MS, async () => {
+        const { body: bytes } = await safeFetch(upstreamUrl, { allowedHosts: [FIRMS_HOST], timeoutMs: 15_000, maxBytes: 12 * 1024 * 1024, fetchImpl, headers: { Accept: 'text/csv' } });
+        return {
+          enabled: true,
+          source: 'firms',
+          attribution: FIRMS_ATTRIBUTION,
+          bbox,
+          fetchedAt: now().toISOString(),
+          refreshSeconds: FIRE_TTL_MS / 1000,
+          points: parseFirmsCsv(new TextDecoder().decode(bytes)),
+        };
+      });
+      return jsonResponse(200, body, { 'Cache-Control': 'public, max-age=300, s-maxage=900, stale-while-revalidate=1800' });
+    } catch (error) {
+      // Never echo anything that could contain the key (e.g. a URL in an error message).
+      const redacted = String(error?.message || error).replace(/[A-Za-z0-9]{16,64}/g, '***');
+      console.warn('[fires]', redacted);
+      const safe = error instanceof UpstreamError ? new UpstreamError(redacted, { status: error.status }) : new Error(redacted);
+      return hazardError(safe, 'NASA FIRMS');
+    }
+  }
+
   function health(request) {
     const blocked = methodGuard(request);
     if (blocked) return blocked;
@@ -290,7 +391,7 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
     return jsonResponse(200, { ok: true, sources }, { 'Cache-Control': 'no-store' });
   }
 
-  return { cameras, frame, flights, flightTrace, health };
+  return { cameras, frame, flights, flightTrace, quakes, fires, health };
 }
 
 let shared;

@@ -95,3 +95,17 @@ test('store notifies with next and previous state', () => {
   assert.deepEqual(seen, [[3, 1], [4, 3]]);
   assert.equal(store.get().b, 2);
 });
+
+test('URL state: layer switches round-trip, defaults stay out of the URL', () => {
+  const base = { filters: defaultFilters(), cameraId: null, view: null, mode: '3d' };
+  assert.equal(serializeUrlState(base), '');
+  const qs = serializeUrlState({ ...base, cameras: false, quakes: false, fires: true });
+  assert.equal(qs, 'cams=0&eq=0&fi=1');
+  const back = parseUrlState(qs);
+  assert.deepEqual([back.cameras, back.quakes, back.fires], [false, false, true]);
+  const defaults = parseUrlState('');
+  assert.deepEqual([defaults.cameras, defaults.quakes, defaults.fires], [true, true, false]);
+  // Anything but the exact switch values keeps the default.
+  const junk = parseUrlState('?cams=no&eq=false&fi=yes');
+  assert.deepEqual([junk.cameras, junk.quakes, junk.fires], [true, true, false]);
+});

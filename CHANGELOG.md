@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — 2026-10-01
+
+- **Panel de capas** en los controles del mapa: cámaras, vuelos, terremotos e incendios, cada uno con su estado. Accesible con teclado (Esc cierra). Se guarda en la URL (`cams=0`, `eq=0`, `fi=1`).
+- **Terremotos en tiempo real** (USGS, últimas 24 h), activos por defecto. El tamaño indica la magnitud y el rojo marca M ≥ 4,5. La ficha muestra magnitud, lugar, hora, profundidad, aviso de tsunami si la fuente lo indica y enlace oficial.
+- **Incendios** (NASA FIRMS, VIIRS): focos de calor de la zona visible. La clave `FIRMS_MAP_KEY` vive solo en el servidor y nunca aparece en respuestas ni errores (hay test que lo verifica).
+- **Nuevas cámaras: Caltrans (California)**, 12 distritos, con proxy de imágenes cerrado.
+- Diseño Matrix: el tinte verde se aplica ahora solo al mapa base, para que los colores de los marcadores sean fieles.
+- Corrección: una potencia radiativa vacía ya no se muestra como «0 MW».
+
 ## 0.3.0 — 2026-10-01
 
 - **Diseño «Matrix»**: verde fósforo sobre negro en el tema oscuro, con tipografía de terminal para títulos y etiquetas, brillo sutil, líneas de barrido y tinte verde sobre el mapa. Las imágenes de las cámaras no se tiñen. El tema claro pasa a una variante verde «sobre papel». Contraste AA verificado.

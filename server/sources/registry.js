@@ -8,6 +8,7 @@ import { safeFetch, decodeText, UpstreamError } from '../http/safeFetch.js';
 import { DGT_CATALOG_URLS, DGT_ALLOWED_HOSTS, DGT_FRAME_HOSTS, parseDgtCatalog, dgtFrameUrl } from './dgt.js';
 import { MADRID_CATALOG_URL, MADRID_ALLOWED_HOSTS, parseMadridKml, madridFrameUrl } from './madrid.js';
 import { loadLivestreams } from './livestreams.js';
+import { CALTRANS_ALLOWED_HOSTS, loadCaltransDistricts, parseCaltransDistricts, caltransFrameUrl } from './caltrans.js';
 import { EUSKADI_ALLOWED_HOSTS, loadEuskadiPages, parseEuskadiPages, euskadiFrameUrl, euskadiFrameHosts } from './euskadi.js';
 import { TFL_ALLOWED_HOSTS, tflCatalogUrl, parseTflCatalog } from './tfl.js';
 import {
@@ -94,6 +95,18 @@ export const SOURCES = Object.freeze({
       parseTflCatalog(await json(tflCatalogUrl(env.TFL_APP_KEY), TFL_ALLOWED_HOSTS, deps), deps),
     frameUrl: null,
     frameHosts: [],
+  },
+  caltrans: {
+    id: 'caltrans',
+    region: 'world',
+    envFlag: 'SOURCE_CALTRANS_ENABLED',
+    loadRaw: async (env, deps) => {
+      const { files, failed } = await loadCaltransDistricts((url) => json(url, CALTRANS_ALLOWED_HOSTS, deps, { Accept: 'application/json' }));
+      const { rows, notes } = parseCaltransDistricts(files, deps);
+      return { rows, notes: { ...notes, failedDistricts: failed } };
+    },
+    frameUrl: caltransFrameUrl,
+    frameHosts: CALTRANS_ALLOWED_HOSTS,
   },
   fintraffic: {
     id: 'fintraffic',
