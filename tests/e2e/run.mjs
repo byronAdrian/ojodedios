@@ -84,9 +84,18 @@ async function main() {
   });
 
   /** Fresh context with API + tile interception and console/CSP capture. */
-  async function open(path = '/', { viewport = { width: 1440, height: 900 }, colorScheme = 'light', failSource, failFrame, storage } = {}) {
+  async function open(path = '/', { viewport = { width: 1440, height: 900 }, colorScheme = 'light', failSource, failFrame, storage, trackThumbnails = false } = {}) {
     const context = await browser.newContext({ viewport, colorScheme, hasTouch: viewport.width < 900, isMobile: viewport.width < 900 });
     if (storage) await context.addInitScript((s) => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, v)), storage);
+    if (trackThumbnails) {
+      // Records every distinct thumbnail <img> ever attached to the results list.
+      await context.addInitScript(() => {
+        window.__thumbs = new Set();
+        new MutationObserver(() => {
+          for (const img of document.querySelectorAll('#results-list .card__thumb img')) window.__thumbs.add(img);
+        }).observe(document, { childList: true, subtree: true });
+      });
+    }
     const page = await context.newPage();
     page.problems = [];
     page.on('console', (msg) => {
@@ -232,6 +241,38 @@ async function main() {
     await page.locator('#detail .media__stamp', { hasText: 'Recibida' }).waitFor();
     await page.locator('#detail .detail__status', { hasText: 'Imagen recibida' }).waitFor();
     assert.equal(await page.locator('#detail .detail__status', { hasText: 'No disponible' }).count(), 0);
+    await close(page);
+  });
+
+  await step('result thumbnails load once: availability updates reuse the cards instead of reloading them', async () => {
+    const page = await open('/', { trackThumbnails: true });
+    // Wait until every listed thumbnail has settled (loaded → "Imagen recibida").
+    await page.waitForFunction(() => {
+      const imgs = [...document.querySelectorAll('#results-list .card__thumb img')];
+      return imgs.length > 1 && imgs.every((img) => img.complete);
+    }, null, { timeout: 15_000 });
+    await page.waitForTimeout(500); // let the last availability batch render
+    const { listed, created } = await page.evaluate(() => ({
+      listed: document.querySelectorAll('#results-list .card__thumb img').length,
+      created: window.__thumbs.size,
+    }));
+    assert.ok(listed > 1, 'expected several thumbnails');
+    assert.equal(created, listed, `each thumbnail must be created once (created ${created} for ${listed} cards)`);
+    assert.ok(await page.locator('.card .badge', { hasText: 'Imagen recibida' }).count() >= listed);
+    noProblems(page);
+    await close(page);
+  });
+
+  await step('dark theme: no scanline overlay and no endless animation over the map', async () => {
+    const page = await open('/', { colorScheme: 'dark' });
+    const fx = await page.evaluate(() => ({
+      stage: getComputedStyle(document.querySelector('.stage'), '::after').backgroundImage,
+      cursor: getComputedStyle(document.querySelector('.brand__tag'), '::after').animationIterationCount,
+    }));
+    assert.equal(fx.stage, 'none');
+    assert.notEqual(fx.cursor, 'infinite');
+    assert.equal(await page.locator('.brand').getAttribute('aria-label'), 'OJO DE DIOS — inicio');
+    assert.match(await page.title(), /^OJO DE DIOS/);
     await close(page);
   });
 

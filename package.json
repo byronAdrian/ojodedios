@@ -2,7 +2,7 @@
   "name": "ojodedios",
   "private": true,
   "version": "0.1.0",
-  "description": "OJO DEL CULO — explorador de cámaras públicas y vuelos sobre un globo 3D CesiumJS, con sección dedicada a España.",
+  "description": "OJO DE DIOS — explorador de cámaras públicas y vuelos sobre un globo 3D CesiumJS, con sección dedicada a España.",
   "type": "module",
   "license": "MIT",
   "engines": {

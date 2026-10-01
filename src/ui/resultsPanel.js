@@ -49,14 +49,23 @@ export function createResultsPanel({ container, actions }) {
   let visibleCount = PAGE_SIZE;
   let lastKey = '';
 
-  function card(camera, { selectedId, availability }) {
+  /**
+   * Card nodes are kept per camera id and reused across renders. Rebuilding
+   * them would recreate every <img>, aborting thumbnails still in flight and
+   * re-downloading the loaded ones; since each load updates availability (and
+   * so triggers a render), the list would keep reloading itself in a sweep.
+   * @type {Map<string, { camera: object, item: HTMLElement, button: HTMLElement, badge: HTMLElement, img: HTMLImageElement | null, observed: string | undefined }>}
+   */
+  const cards = new Map();
+
+  function buildCard(camera, observed) {
     const provider = getProvider(camera.providerId);
-    const observed = availability.get(camera.id);
     const thumb = h('div', { class: 'card__thumb' }, icon('camera'));
     const thumbSrc = camera.mediaType === 'image' ? camera.mediaUrl : camera.thumbnailUrl;
     if (camera.liveness === 'live') thumb.append(h('span', { class: 'live-badge' }, '● EN DIRECTO'));
+    let img = null;
     if (thumbSrc && observed !== 'offline') {
-      const img = h('img', {
+      img = h('img', {
         src: thumbSrc,
         alt: '',
         loading: 'lazy',
@@ -72,27 +81,45 @@ export function createResultsPanel({ container, actions }) {
       }, { once: true });
       thumb.append(img);
     }
-    return h(
-      'li',
-      null,
+    const badge = h('span', { class: 'card__status' }, statusBadge(camera, observed));
+    const button = h(
+      'button',
+      { type: 'button', class: 'card', 'aria-current': 'false', onClick: () => actions.select(camera.id) },
+      thumb,
       h(
-        'button',
-        {
-          type: 'button',
-          class: 'card',
-          'aria-current': String(camera.id === selectedId),
-          onClick: () => actions.select(camera.id),
-        },
-        thumb,
-        h(
-          'span',
-          { class: 'card__body' },
-          h('span', { class: 'card__title' }, camera.name),
-          h('span', { class: 'card__meta' }, `${locationLabel(camera)} · ${provider?.shortName ?? camera.providerId}`),
-          h('span', { class: 'card__badges' }, statusBadge(camera, observed), h('span', { class: 'badge' }, categoryLabel(camera.category))),
-        ),
+        'span',
+        { class: 'card__body' },
+        h('span', { class: 'card__title' }, camera.name),
+        h('span', { class: 'card__meta' }, `${locationLabel(camera)} · ${provider?.shortName ?? camera.providerId}`),
+        h('span', { class: 'card__badges' }, badge, h('span', { class: 'badge' }, categoryLabel(camera.category))),
       ),
     );
+    return { camera, item: h('li', null, button), button, badge, img, observed };
+  }
+
+  /** Returns the (possibly reused) <li> for a camera, patched to the current state. */
+  function card(camera, { selectedId, availability }) {
+    const observed = availability.get(camera.id);
+    let entry = cards.get(camera.id);
+    if (!entry || entry.camera !== camera) {
+      entry = buildCard(camera, observed);
+      cards.set(camera.id, entry);
+    } else if (entry.observed !== observed) {
+      render(entry.badge, statusBadge(camera, observed));
+      if (observed === 'offline' && entry.img) {
+        entry.img.remove();
+        entry.img = null;
+      }
+      entry.observed = observed;
+    }
+    entry.button.setAttribute('aria-current', String(camera.id === selectedId));
+    return entry.item;
+  }
+
+  /** Drops cached cards that are no longer listed, so memory stays bounded by the page. */
+  function pruneCards(page) {
+    const keep = new Set(page.map((camera) => camera.id));
+    for (const id of cards.keys()) if (!keep.has(id)) cards.delete(id);
   }
 
   function activeChips(filters, onlyInView) {
@@ -201,6 +228,7 @@ export function createResultsPanel({ container, actions }) {
     render(chips, tab === 'results' ? activeChips(state.filters, state.onlyInView) : null);
 
     const page = items.slice(0, visibleCount);
+    pruneCards(page);
     render(
       list,
       ...(page.length ? page.map((camera) => card(camera, state)) : [emptyState(state)]),

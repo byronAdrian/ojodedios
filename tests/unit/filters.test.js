@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyFilters, defaultFilters, summarize, countActiveFilters, distanceKm, normalizeText, sortCameras } from '../../src/domain/filters.js';
+import { applyFilters, defaultFilters, summarize, countActiveFilters, distanceKm, normalizeText, sortCameras, dependsOnAvailability } from '../../src/domain/filters.js';
 import { createCamera } from '../../src/domain/camera.js';
 
 const cam = (id, extra) => createCamera({ id, name: id, mediaUrl: null, ...extra });
@@ -64,4 +64,17 @@ test('frameFor returns finite targets and falls back when empty', async () => {
   assert.equal(frameFor([], fallback), fallback);
   const t = frameFor(cams.slice(0, 3), fallback);
   assert.ok([t.lat, t.lon, t.km].every(Number.isFinite));
+});
+
+test('only the session-status filters depend on observed availability', () => {
+  assert.equal(dependsOnAvailability({ ...defaultFilters(), status: 'online' }), true);
+  assert.equal(dependsOnAvailability({ ...defaultFilters(), status: 'offline' }), true);
+  for (const status of ['all', 'active']) assert.equal(dependsOnAvailability({ ...defaultFilters(), status }), false, status);
+  assert.equal(dependsOnAvailability(undefined), false);
+  // Consistency with applyFilters: under the other statuses availability cannot change the result.
+  const seen = new Map([['dgt:1', 'offline'], ['dgt:2', 'online']]);
+  for (const status of ['all', 'active']) {
+    const filters = { ...defaultFilters(), status };
+    assert.deepEqual(ids(applyFilters(cams, filters, { availability: seen })), ids(applyFilters(cams, filters)));
+  }
 });

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2 — 2026-10-01
+
+- Nombre de la aplicación: **OJO DE DIOS**.
+- **Corrección**: la lista de cámaras se recargaba sola en cadena. Cada miniatura que cargaba reconstruía la lista entera, lo que volvía a pedir las demás imágenes y redibujaba todos los marcadores del mapa. Ahora cada tarjeta se crea una sola vez y solo se actualiza su distintivo; el mapa solo se redibuja si cambia el conjunto de cámaras. Con 7 tarjetas se creaban 32 imágenes; ahora, 7. Un test E2E lo comprueba.
+- Eliminadas las líneas de barrido sobre el mapa (producían efecto muaré y parecía que el mapa se actualizaba constantemente). El cursor del logotipo parpadea unas veces al cargar y se detiene.
+
 ## 0.4.1 — 2026-10-01
 
 - **Corrección**: los marcadores (terremotos, incendios, cámaras y aviones) del otro lado del planeta se veían a través del globo y parecían moverse al girarlo. Ahora la Tierra los tapa, como debe ser. Hay un test que impide reintroducir el fallo.

@@ -508,7 +508,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.detail__status {
+.detail__status,
+.card__status {
   display: contents;
 }
 .card__badges {
