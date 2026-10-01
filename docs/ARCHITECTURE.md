@@ -1,4 +1,4 @@
-# Arquitectura — WORLDVIEW ESPAÑA
+# Arquitectura — OJO DEL CULO
 
 ## ADR-001 · Construir sobre la base técnica de gods-eye-view, no copiar el repositorio completo
 

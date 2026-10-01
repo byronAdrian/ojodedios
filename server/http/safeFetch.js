@@ -62,7 +62,7 @@ export async function safeFetch(url, options) {
     try {
       response = await fetchImpl(current, {
         headers: {
-          'User-Agent': 'worldview-espana/0.1 (+https://github.com/byronAdrian/ojodedios)',
+          'User-Agent': 'ojodedios/0.1 (+https://github.com/byronAdrian/ojodedios)',
           ...headers,
         },
         redirect: 'manual',

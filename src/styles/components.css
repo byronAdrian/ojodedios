@@ -27,7 +27,9 @@
   padding: 1px 6px;
 }
 @media (max-width: 420px) {
-  .brand__word {
+  /* Too narrow for the wordmark: keep the icon (the link keeps its aria-label). */
+  .brand__word,
+  .brand__tag {
     display: none;
   }
 }

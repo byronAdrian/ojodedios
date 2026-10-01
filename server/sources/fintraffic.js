@@ -8,7 +8,7 @@ export const FINTRAFFIC_CATALOG_URL = 'https://tie.digitraffic.fi/api/weathercam
 export const FINTRAFFIC_ALLOWED_HOSTS = ['tie.digitraffic.fi'];
 export const FINTRAFFIC_IMAGE_ORIGIN = 'https://weathercam.digitraffic.fi/';
 /** Digitraffic asks every client to identify itself. */
-export const DIGITRAFFIC_HEADERS = { 'Digitraffic-User': 'worldview-espana', Accept: 'application/json' };
+export const DIGITRAFFIC_HEADERS = { 'Digitraffic-User': 'ojodedios', Accept: 'application/json' };
 
 const inFinland = (lat, lon) => lat >= 59 && lat <= 70.2 && lon >= 19 && lon <= 31.7;
 

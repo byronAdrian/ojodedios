@@ -51,7 +51,7 @@ export function devApiPlugin() {
     }
   };
   return {
-    name: 'worldview-dev-api',
+    name: 'ojodedios-dev-api',
     // Block bodies on purpose: a returned function would be treated as a post hook.
     configureServer(server) {
       server.middlewares.use(middleware(false));

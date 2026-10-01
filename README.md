@@ -1,10 +1,10 @@
-# WORLDVIEW ESPAÑA
+# OJO DEL CULO
 
 Explorador de **cámaras públicas oficiales** sobre un globo 3D (CesiumJS) y un mapa 2D,
 con una sección prioritaria para España: comunidades autónomas, provincias, ciudades,
 Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
 
-> Nombre provisional. Basado técnicamente en
+> Basado técnicamente en
 > [gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) (MIT). Véase
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) para saber qué se reutiliza y por qué no se
 > copió el repositorio completo.
