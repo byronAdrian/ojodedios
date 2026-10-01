@@ -15,6 +15,7 @@ export function createFlightsController({ container, getMap, createLayer, onSele
   let selectedHex = null;
   let lastAircraft = [];
   let lastShown = null;
+  let attribution = null;
 
   const detail = createFlightDetail({
     container,
@@ -26,6 +27,7 @@ export function createFlightsController({ container, getMap, createLayer, onSele
     getView: () => getMap()?.globe.getViewTarget() ?? null,
     onUpdate(state) {
       lastAircraft = state.aircraft;
+      if (state.attribution) attribution = state.attribution;
       layer?.setAircraft(state.aircraft);
       if (selectedHex) {
         const a = service.find(selectedHex);
@@ -33,9 +35,9 @@ export function createFlightsController({ container, getMap, createLayer, onSele
         layer?.setSelected(selectedHex, trail);
         if (a) {
           lastShown = a;
-          detail.show(a, { trailPoints: trail.length });
+          detail.show(a, { trailPoints: trail.length, attribution });
         }
-        else if (state.status === 'ready') detail.show(lastShown, { trailPoints: trail.length, lost: true });
+        else if (state.status === 'ready') detail.show(lastShown, { trailPoints: trail.length, lost: true, attribution });
       }
       onStatus({ ...state, count: state.aircraft.length });
     },
@@ -46,7 +48,7 @@ export function createFlightsController({ container, getMap, createLayer, onSele
     const a = hex ? service.find(hex) : null;
     lastShown = a;
     layer?.setSelected(hex, hex ? service.trail(hex) : []);
-    detail.show(a, { trailPoints: hex ? service.trail(hex).length : 0 });
+    detail.show(a, { trailPoints: hex ? service.trail(hex).length : 0, attribution });
     onSelectionChange(Boolean(a));
   }
 

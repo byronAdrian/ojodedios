@@ -6,7 +6,7 @@
 import { SOURCES, isSourceEnabled, loadCatalog } from '../sources/registry.js';
 import { safeFetch, UpstreamError } from '../http/safeFetch.js';
 import { createRateLimiter, clientKey } from './rateLimit.js';
-import { ADSB_LOL_HOSTS, adsbLolUrl, normalizeAdsbLol, quantiseFlightQuery } from '../sources/flights.js';
+import { FLIGHT_PROVIDERS, normalizeAdsbLol, quantiseFlightQuery } from '../sources/flights.js';
 
 const CATALOG_TTL_MS = 15 * 60 * 1000;
 const FRAME_MAX_BYTES = 3 * 1024 * 1024;
@@ -143,7 +143,9 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
   const flightCache = new Map();
   const FLIGHT_TTL_MS = 10_000;
   const FLIGHT_STALE_MS = 120_000;
-  let flightCooldownUntil = 0;
+  /** provider id → epoch ms until which it is skipped (after 429/5xx/timeout). */
+  const flightCooldown = new Map();
+  const FLIGHT_COOLDOWN_MS = 60_000;
 
   async function flights(request) {
     const blocked = methodGuard(request);
@@ -159,21 +161,40 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
     const hit = flightCache.get(key);
     const headers = { 'Cache-Control': 'public, max-age=5, s-maxage=10, stale-while-revalidate=20' };
     if (hit && t - hit.at < FLIGHT_TTL_MS) return jsonResponse(200, hit.body, headers);
-    if (t < flightCooldownUntil) {
-      if (hit && t - hit.at < FLIGHT_STALE_MS) return jsonResponse(200, { ...hit.body, stale: true }, headers);
-      return jsonResponse(503, { error: 'rate_limited', message: 'adsb.lol en enfriamiento' }, { 'Retry-After': '30' });
+
+    const failures = [];
+    for (const provider of FLIGHT_PROVIDERS) {
+      if (t < (flightCooldown.get(provider.id) ?? 0)) {
+        failures.push(`${provider.id}: en espera`);
+        continue;
+      }
+      try {
+        const { body } = await safeFetch(provider.url(query), {
+          allowedHosts: provider.hosts,
+          timeoutMs: 6_000,
+          maxBytes: 8 * 1024 * 1024,
+          fetchImpl,
+          headers: { Accept: 'application/json' },
+        });
+        const result = {
+          enabled: true,
+          query,
+          source: provider.id,
+          attribution: provider.attribution,
+          fetchedAt: now().toISOString(),
+          aircraft: normalizeAdsbLol(JSON.parse(new TextDecoder().decode(body))),
+        };
+        if (flightCache.size > 500) flightCache.delete(flightCache.keys().next().value);
+        flightCache.set(key, { at: t, body: result });
+        return jsonResponse(200, result, headers);
+      } catch (error) {
+        // Rate limits, outages and malformed payloads all sideline the provider for a while.
+        flightCooldown.set(provider.id, t + FLIGHT_COOLDOWN_MS);
+        failures.push(`${provider.id}: ${String(error?.message || error).slice(0, 80)}`);
+      }
     }
-    try {
-      const { body } = await safeFetch(adsbLolUrl(query), { allowedHosts: ADSB_LOL_HOSTS, timeoutMs: 8_000, maxBytes: 8 * 1024 * 1024, fetchImpl, headers: { Accept: 'application/json' } });
-      const result = { enabled: true, query, fetchedAt: now().toISOString(), aircraft: normalizeAdsbLol(JSON.parse(new TextDecoder().decode(body))) };
-      if (flightCache.size > 500) flightCache.delete(flightCache.keys().next().value);
-      flightCache.set(key, { at: t, body: result });
-      return jsonResponse(200, result, headers);
-    } catch (error) {
-      if (error instanceof UpstreamError && (error.status === 502 || error.status === 504)) flightCooldownUntil = t + 30_000;
-      if (hit && t - hit.at < FLIGHT_STALE_MS) return jsonResponse(200, { ...hit.body, stale: true }, headers);
-      return jsonResponse(502, { error: 'upstream_unavailable', message: String(error?.message || error).slice(0, 200) }, { 'Cache-Control': 'public, s-maxage=10' });
-    }
+    if (hit && t - hit.at < FLIGHT_STALE_MS) return jsonResponse(200, { ...hit.body, stale: true }, headers);
+    return jsonResponse(502, { error: 'upstream_unavailable', message: failures.join(' · ').slice(0, 400) }, { 'Cache-Control': 'public, s-maxage=10' });
   }
 
   function health(request) {

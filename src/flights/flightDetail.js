@@ -8,7 +8,7 @@ export function createFlightDetail({ container, onClose, onCenter }) {
   let currentHex = null;
 
   /** @param {object | null} a @param {{ trailPoints?: number, status?: string }} [ctx] */
-  function show(a, { trailPoints = 0, lost = false } = {}) {
+  function show(a, { trailPoints = 0, lost = false, attribution = null } = {}) {
     if (!a) {
       currentHex = null;
       container.hidden = true;
@@ -42,7 +42,7 @@ export function createFlightDetail({ container, onClose, onCenter }) {
           h('dt', null, 'Ruta'), h('dd', null, trailPoints > 1 ? `Trayectoria observada en esta sesión (${trailPoints} posiciones)` : 'Se dibujará a medida que lleguen posiciones')),
         h('div', { class: 'actions' },
           h('button', { type: 'button', class: 'btn btn--primary btn--sm', onClick: () => onCenter(a) }, icon('target', 'icon icon--sm'), 'Centrar en el mapa')),
-        h('p', { class: 'attribution' }, 'Datos ADS-B de adsb.lol (ODbL 1.0), red comunitaria. Pueden estar incompletos o retrasados; no aptos para navegación. Origen y destino no se muestran: las bases de rutas disponibles no permiten su publicación.')),
+        h('p', { class: 'attribution' }, `Datos ADS-B de ${attribution || 'redes comunitarias'}. Pueden estar incompletos o retrasados; no aptos para navegación. Origen y destino no se muestran: las bases de rutas disponibles no permiten su publicación.`)),
     );
     container.hidden = false;
     if (firstRender) container.querySelector('#flight-title')?.focus();

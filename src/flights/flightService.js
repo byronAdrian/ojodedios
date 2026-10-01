@@ -70,7 +70,7 @@ export function createFlightService({ fetchImpl = (...a) => globalThis.fetch(...
       } else {
         aircraft = body.aircraft;
         recordTrails(aircraft);
-        onUpdate({ status: 'ready', aircraft, stale: Boolean(body.stale) });
+        onUpdate({ status: 'ready', aircraft, stale: Boolean(body.stale), attribution: body.attribution || null });
       }
     } catch (error) {
       if (error?.name === 'AbortError') return;

@@ -205,5 +205,33 @@ test('flights: quantised upstream call, per-key cache, stale on failure, 400 on 
   const stale = await (await flights(req('/api/flights?lat=40.4&lon=-3.6&dist=60'))).json();
   assert.equal(stale.stale, true);
   assert.equal((await flights(req('/api/flights?lat=abc&lon=1&dist=1'))).status, 400);
-  assert.deepEqual([...new Set(fetchImpl.calls)], [url]);
+  // After adsb.lol's 429 the other networks are tried (404 in this fake), then stale is served.
+  assert.deepEqual([...new Set(fetchImpl.calls)], [url, 'https://api.airplanes.live/v2/point/40.5/-3.5/100', 'https://opendata.adsb.fi/api/v2/lat/40.5/lon/-3.5/dist/100']);
+});
+
+test('flights fall back to the next ADS-B network on 429 and report which one served', async () => {
+  const lol = 'https://api.adsb.lol/v2/lat/40.5/lon/-3.5/dist/100';
+  const live = 'https://api.airplanes.live/v2/point/40.5/-3.5/100';
+  const fi = 'https://opendata.adsb.fi/api/v2/lat/40.5/lon/-3.5/dist/100';
+  const sample = JSON.parse(fixture('adsblol-sample.json'));
+  const fetchImpl = fakeFetch({
+    [lol]: () => new Response('slow down', { status: 429 }),
+    [live]: () => new Response(JSON.stringify({ aircraft: sample.ac })),
+  });
+  let t = 0;
+  const { flights } = createHandlers({ env: {}, fetchImpl, now: () => new Date(t) });
+  const body = await (await flights(req('/api/flights?lat=40.4&lon=-3.6&dist=80'))).json();
+  assert.equal(body.source, 'airplanes.live');
+  assert.equal(body.aircraft.length, 2);
+  t = 20_000; // cache expired; adsb.lol still cooling down → not retried
+  await flights(req('/api/flights?lat=40.4&lon=-3.6&dist=80'));
+  assert.deepEqual(fetchImpl.calls, [lol, live, live]);
+  assert.ok(!fetchImpl.calls.includes(fi));
+});
+
+test('flights: when every network fails the error lists each reason', async () => {
+  const { flights } = createHandlers({ env: {}, fetchImpl: fakeFetch({}) });
+  const res = await flights(req('/api/flights?lat=40&lon=-3&dist=50'));
+  assert.equal(res.status, 502);
+  assert.match((await res.json()).message, /adsb\.lol: Upstream HTTP 404 · airplanes\.live: .* · adsb\.fi: /);
 });

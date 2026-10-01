@@ -9,6 +9,33 @@
  * tiny, CDN-cacheable and impossible to steer anywhere but this endpoint.
  */
 export const ADSB_LOL_HOSTS = ['api.adsb.lol'];
+
+/**
+ * Community ADS-B networks exposing the same readsb "v2" JSON. Tried in order;
+ * a 429/5xx/timeout on one moves to the next, each with its own cooldown.
+ * Endpoint shapes per each provider's public API docs (not verifiable from the
+ * dev environment). All are keyless for light, non-commercial use.
+ */
+export const FLIGHT_PROVIDERS = Object.freeze([
+  {
+    id: 'adsb.lol',
+    hosts: ['api.adsb.lol'],
+    url: ({ lat, lon, dist }) => `https://api.adsb.lol/v2/lat/${lat}/lon/${lon}/dist/${dist}`,
+    attribution: 'adsb.lol (ODbL 1.0)',
+  },
+  {
+    id: 'airplanes.live',
+    hosts: ['api.airplanes.live'],
+    url: ({ lat, lon, dist }) => `https://api.airplanes.live/v2/point/${lat}/${lon}/${dist}`,
+    attribution: 'airplanes.live (uso no comercial)',
+  },
+  {
+    id: 'adsb.fi',
+    hosts: ['opendata.adsb.fi'],
+    url: ({ lat, lon, dist }) => `https://opendata.adsb.fi/api/v2/lat/${lat}/lon/${lon}/dist/${dist}`,
+    attribution: 'adsb.fi Open Data (uso personal no comercial)',
+  },
+]);
 export const FLIGHT_RADII_NM = Object.freeze([50, 100, 250]);
 const MAX_POSITION_AGE_S = 60;
 const FOOT_TO_M = 0.3048;
@@ -31,8 +58,9 @@ const num = (v) => (v === null || v === undefined || v === '' ? null : Number.is
 
 /** Compact, validated aircraft records; stale or positionless contacts dropped. */
 export function normalizeAdsbLol(payload) {
-  const list = Array.isArray(payload?.ac) ? payload.ac : null;
-  if (!list) throw new Error('Formato adsb.lol no reconocido: sin "ac"');
+  // readsb v2 uses "ac"; some mirrors name the array "aircraft".
+  const list = Array.isArray(payload?.ac) ? payload.ac : Array.isArray(payload?.aircraft) ? payload.aircraft : null;
+  if (!list) throw new Error('Formato ADS-B no reconocido: sin "ac"');
   const out = [];
   for (const a of list) {
     const hex = String(a?.hex ?? '').trim().toLowerCase();
