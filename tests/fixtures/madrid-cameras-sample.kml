@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- First placemarks of the real datos.madrid.es 202088-0-trafico-camaras.kml (via github.com/ADIRSE/maddata). Parser fixture. -->
+<kml xmlns="http://earth.google.com/kml/2.2">
+  <Document>
+    <name>CCTV.kml</name>
+    <Placemark>
+      <description>&lt;div align=center&gt;&lt;img src=http://informo.munimadrid.es/informo/Camaras/Camara00032_mdf.jpg  width=300 height=220/&gt;&lt;br/&gt;GTA ALONSO MARTINEZ&lt;/div&gt;</description>
+      <styleUrl>#m_ylw-pushpin</styleUrl>
+      <ExtendedData>
+        <Data name="Numero">
+          <Value>00032</Value>
+        </Data>
+        <Data name="Nombre">
+          <Value>GTA ALONSO MARTINEZ</Value>
+        </Data>
+      </ExtendedData>
+      <Point>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <coordinates>-3.69556116887887,40.4276170711932,10 </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <description>&lt;div align=center&gt;&lt;img src=http://informo.munimadrid.es/informo/Camaras/Camara00019_mdf.jpg  width=300 height=220/&gt;&lt;br/&gt;PLAZA DE COLON&lt;/div&gt;</description>
+      <styleUrl>#m_ylw-pushpin</styleUrl>
+      <ExtendedData>
+        <Data name="Numero">
+          <Value>00019</Value>
+        </Data>
+        <Data name="Nombre">
+          <Value>PLAZA DE COLON</Value>
+        </Data>
+      </ExtendedData>
+      <Point>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <coordinates>-3.69054764066529,40.425679397069,10 </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <description>&lt;div align=center&gt;&lt;img src=http://informo.munimadrid.es/informo/Camaras/Camara00001_mdf.jpg  width=300 height=220/&gt;&lt;br/&gt;PLAZA CASTILLA - NORTE&lt;/div&gt;</description>
+      <styleUrl>#m_ylw-pushpin</styleUrl>
+      <ExtendedData>
+        <Data name="Numero">
+          <Value>00001</Value>
+        </Data>
+        <Data name="Nombre">
+          <Value>PLAZA CASTILLA - NORTE</Value>
+        </Data>
+      </ExtendedData>
+      <Point>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <coordinates>-3.68895234060793,40.4660904449359,10 </coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

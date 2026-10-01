@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [24.9384, 60.1699, 0] },
+      "properties": {
+        "id": "C01502",
+        "name": "vt1_Espoo_Nupuri",
+        "collectionStatus": "GATHERING",
+        "presets": [
+          { "id": "C0150201", "inCollection": true },
+          { "id": "C0150202", "inCollection": false },
+          { "id": "C9999901", "inCollection": true }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [25.0, 61.0, 0] },
+      "properties": { "id": "C01503", "name": "removed", "collectionStatus": "REMOVED_TEMPORARILY", "presets": [{ "id": "C0150301", "inCollection": true }] }
+    }
+  ]
+}

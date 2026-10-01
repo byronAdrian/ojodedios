@@ -1,0 +1,32 @@
+[
+  {
+    "id": "JamCams_00001.01251",
+    "commonName": "Tower Bridge Approach",
+    "lat": 51.5055,
+    "lon": -0.0754,
+    "additionalProperties": [
+      { "key": "available", "value": "true" },
+      { "key": "imageUrl", "value": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.01251.jpg" }
+    ]
+  },
+  {
+    "id": "JamCams_00001.09999",
+    "commonName": "Unavailable camera",
+    "lat": 51.5,
+    "lon": -0.1,
+    "additionalProperties": [
+      { "key": "available", "value": "false" },
+      { "key": "imageUrl", "value": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.09999.jpg" }
+    ]
+  },
+  {
+    "id": "JamCams_00001.08888",
+    "commonName": "Foreign host",
+    "lat": 51.5,
+    "lon": -0.1,
+    "additionalProperties": [
+      { "key": "available", "value": "true" },
+      { "key": "imageUrl", "value": "https://evil.example.com/00001.08888.jpg" }
+    ]
+  }
+]
