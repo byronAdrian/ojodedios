@@ -23,7 +23,8 @@ function fakeFetch(routes) {
 }
 
 const req = (path, init) => new Request(`https://app.test${path}`, init);
-const DGT = 'https://infocar.dgt.es/datex2/dgt/CCTVSiteTablePublication/all/content.xml';
+const DGT = 'https://infocar.dgt.es/datex2/dgt/CCTVSiteTablePublication/all/content.xml'; // legacy fallback
+const DGT_V36 = 'https://nap.dgt.es/datex2/v3/dgt/DevicePublication/camaras_datex2_v36.xml';
 
 test('GET /api/cameras?source=dgt returns normalized cameras with CDN cache headers', async () => {
   const fetchImpl = fakeFetch({ [DGT]: new Response(fixture('dgt-cctv-sample.xml')) });
@@ -160,4 +161,17 @@ test('madrid frame ids are decoded and re-validated server-side', async () => {
   assert.equal((await frame(req(`/api/frame?id=madrid:${id}`))).status, 200);
   const evil = Buffer.from('169.254.169.254/latest.jpg').toString('base64url');
   assert.equal((await frame(req(`/api/frame?id=madrid:${evil}`))).status, 404);
+});
+
+test('DGT tries the v3.6 NAP feed first and falls back to the legacy URL only on 404', async () => {
+  const both = fakeFetch({ [DGT_V36]: new Response(fixture('dgt-cctv-sample.xml')), [DGT]: new Response('never') });
+  await createHandlers({ env: {}, fetchImpl: both }).cameras(req('/api/cameras?source=dgt'));
+  assert.deepEqual(both.calls, [DGT_V36]);
+  const fallback = fakeFetch({ [DGT]: new Response(fixture('dgt-cctv-sample.xml')) });
+  const res = await createHandlers({ env: {}, fetchImpl: fallback }).cameras(req('/api/cameras?source=dgt'));
+  assert.equal(res.status, 200);
+  assert.deepEqual(fallback.calls, [DGT_V36, DGT]);
+  const down = fakeFetch({ [DGT_V36]: new Response('x', { status: 503 }) });
+  assert.equal((await createHandlers({ env: {}, fetchImpl: down }).cameras(req('/api/cameras?source=dgt'))).status, 502);
+  assert.deepEqual(down.calls, [DGT_V36], 'a 5xx does not silently switch to another feed');
 });

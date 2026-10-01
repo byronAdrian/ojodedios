@@ -109,3 +109,18 @@ test('Fintraffic keeps GATHERING stations and well-formed in-collection presets'
   assert.equal(cams[0].mediaUrl, 'https://weathercam.digitraffic.fi/C0150201.jpg');
   assert.equal(cams[0].category, 'weather');
 });
+
+test('DGT: v3-style records are found structurally whatever the element names', () => {
+  const xml = `<d2:payload xmlns:d2="x"><fac:device id="CAM-31"><fac:name><com:values><com:value lang="es">A-6 PK 20</com:value></com:values></fac:name>
+      <loc:pointCoordinates><loc:latitude>40.5</loc:latitude><loc:longitude>-3.9</loc:longitude></loc:pointCoordinates>
+      <fac:urlLinkAddress>https://infocar.dgt.es/etraffic/data/camaras/31.jpg</fac:urlLinkAddress></fac:device>
+    <fac:device id="CAM-32"><com:value>Sin imagen</com:value><loc:latitude>41</loc:latitude><loc:longitude>-4</loc:longitude><x>https://infocar.dgt.es/etraffic/data/camaras/32.jpg</x></fac:device></d2:payload>`;
+  const cams = parseDgtCatalog(xml, ctx).map(createCamera);
+  assert.deepEqual(cams.map((c) => c.id), ['dgt:31', 'dgt:32']);
+  assert.equal(cams[0].name, 'A-6 Pk 20 · cámara 31');
+  assert.equal(cams[0].provinceCode, 'ES-M');
+});
+
+test('DGT: unrecognised document reports its beginning for diagnosis', () => {
+  assert.throws(() => parseDgtCatalog('<foo><bar>1</bar></foo>', ctx), /inicio: <foo>/);
+});
