@@ -74,8 +74,8 @@ export function createGlobe(container, { theme, creditContainer, ionToken }) {
 
   const applySceneColors = (mode) => {
     const dark = mode === 'dark';
-    scene.backgroundColor = Color.fromCssColorString(dark ? '#050a14' : '#dfe6ee');
-    scene.globe.baseColor = Color.fromCssColorString(dark ? '#0b1424' : '#cfd8e3');
+    scene.backgroundColor = Color.fromCssColorString(dark ? '#000301' : '#dfeae2');
+    scene.globe.baseColor = Color.fromCssColorString(dark ? '#03100a' : '#cfe0d4');
     if (scene.skyAtmosphere) scene.skyAtmosphere.show = true;
     if (scene.skyBox) scene.skyBox.show = dark;
     if (scene.sun) scene.sun.show = false;

@@ -12,14 +12,15 @@
  * @property {string} country       ISO alpha-2 or ''
  * @property {string} community     ISO 3166-2:ES or ''
  * @property {string} province      ISO 3166-2:ES or ''
- * @property {string} city          quick-access city id or ''
+ * @property {string} city          quick-access city id, place id (`g…`) or ''
  * @property {string[]} categories  empty = all
  * @property {StatusFilter} status
  * @property {string} text          free text over name/city
  * @property {boolean} favoritesOnly
  * @property {[number, number, number, number] | null} viewBounds  [w,s,e,n] when "solo en vista"
  */
-import { getQuickCity, CITY_RADIUS_KM } from './spain.js';
+import { CITY_RADIUS_KM } from './spain.js';
+import { getCityTarget } from './places.js';
 
 /** @returns {FilterState} */
 export const defaultFilters = () => ({
@@ -70,7 +71,7 @@ function inBounds(camera, [w, s, e, n]) {
 export function applyFilters(cameras, filters, { availability = new Map(), favorites = new Set() } = {}) {
   const text = normalizeText(filters.text);
   const categories = filters.categories.length ? new Set(filters.categories) : null;
-  const city = filters.city ? getQuickCity(filters.city) : null;
+  const city = getCityTarget(filters.city);
   const country = filters.scope === 'spain' ? 'ES' : filters.country;
 
   return cameras.filter((camera) => {
@@ -127,7 +128,7 @@ export function countActiveFilters(filters) {
 
 /** Sort: selected city proximity first when a city is active, else by name. */
 export function sortCameras(cameras, filters) {
-  const city = filters.city ? getQuickCity(filters.city) : null;
+  const city = getCityTarget(filters.city);
   const copy = cameras.slice();
   if (city) {
     const d = new Map(copy.map((c) => [c.id, distanceKm(city.lat, city.lon, c.lat, c.lon)]));
@@ -135,4 +136,17 @@ export function sortCameras(cameras, filters) {
   }
   const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
   return copy.sort((a, b) => collator.compare(a.name, b.name));
+}
+
+/**
+ * Closest camera to a point (for "no cameras within N km of X" hints).
+ * @returns {{ camera: import('./camera.js').Camera, km: number } | null}
+ */
+export function nearestCamera(cameras, lat, lon) {
+  let best = null;
+  for (const camera of cameras) {
+    const km = distanceKm(lat, lon, camera.lat, camera.lon);
+    if (!best || km < best.km) best = { camera, km };
+  }
+  return best;
 }

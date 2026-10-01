@@ -63,73 +63,86 @@
 
   color-scheme: light;
 
-  /* ---- Light theme (default) ---- */
-  --bg: #f4f6f9;
+  /* Display face: terminal mono for brand, titles, labels and figures. */
+  --font-display: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  /* ---- Light theme: "phosphor on paper" ---- */
+  --bg: #eef5f0;
   --surface: #ffffff;
-  --surface-2: #f6f8fb;
-  --surface-3: #eaeef4;
-  --surface-glass: rgba(255, 255, 255, 0.88);
-  --border: #dde3eb;
-  --border-strong: #8995a6;
-  --text: #0f1724;
-  --text-2: #3d4a5c;
-  --text-3: #5b6778;
-  --accent: #00808a;
-  --accent-hover: #006a72;
+  --surface-2: #f4faf6;
+  --surface-3: #e3f1e7;
+  --surface-glass: rgba(250, 255, 251, 0.86);
+  --border: #cfe3d6;
+  --border-strong: #6b9a7e;
+  --text: #04180c;
+  --text-2: #1f4a32;
+  --text-3: #3a6550;
+  --accent: #00752f;
+  --accent-hover: #005c25;
   --accent-contrast: #ffffff;
-  --accent-soft: rgba(0, 128, 138, 0.1);
-  --focus: #0072d6;
-  --ok: #10794a;
-  --ok-soft: rgba(16, 121, 74, 0.12);
-  --warn: #9a5b00;
-  --warn-soft: rgba(154, 91, 0, 0.12);
+  --accent-soft: rgba(0, 117, 47, 0.1);
+  --focus: #00752f;
+  --ok: #0d7a3e;
+  --ok-soft: rgba(13, 122, 62, 0.12);
+  --warn: #8a5a00;
+  --warn-soft: rgba(138, 90, 0, 0.12);
   --danger: #b42318;
   --danger-soft: rgba(180, 35, 24, 0.1);
-  --neutral-soft: rgba(61, 74, 92, 0.1);
-  --shadow-sm: 0 1px 2px rgba(15, 23, 36, 0.06), 0 1px 1px rgba(15, 23, 36, 0.04);
-  --shadow-md: 0 6px 20px rgba(15, 23, 36, 0.08), 0 1px 3px rgba(15, 23, 36, 0.06);
-  --shadow-lg: 0 18px 50px rgba(15, 23, 36, 0.14);
-  --scrim: rgba(15, 23, 36, 0.32);
-  --globe-bg: #dfe6ee;
-  --marker: #00808a;
+  --neutral-soft: rgba(31, 74, 50, 0.08);
+  --shadow-sm: 0 1px 2px rgba(4, 24, 12, 0.06), 0 1px 1px rgba(4, 24, 12, 0.04);
+  --shadow-md: 0 6px 20px rgba(4, 24, 12, 0.08), 0 1px 3px rgba(4, 24, 12, 0.06);
+  --shadow-lg: 0 18px 50px rgba(4, 24, 12, 0.14);
+  --scrim: rgba(4, 24, 12, 0.32);
+  --globe-bg: #dfeae2;
+  --marker: #00752f;
   --marker-ring: #ffffff;
-  --marker-selected: #e8590c;
-  --flight: #2563eb;
+  --marker-selected: #d97706;
+  --flight: #0e7490;
+  /* Decorative layer (src/styles/matrix.css) */
+  --glow: none;
+  --glow-text: none;
+  --scanlines: transparent;
+  --map-tint: transparent;
 }
 
+/* ---- Dark theme: "Matrix" — phosphor green on black ---- */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #070d18;
-  --surface: #0d1626;
-  --surface-2: #111c2f;
-  --surface-3: #18253b;
-  --surface-glass: rgba(11, 19, 33, 0.86);
-  --border: #1f2c43;
-  --border-strong: #5b6b85;
-  --text: #edf2f8;
-  --text-2: #b6c2d3;
-  --text-3: #8d9bb0;
-  --accent: #2ee6cf;
-  --accent-hover: #64f0de;
-  --accent-contrast: #04211e;
-  --accent-soft: rgba(46, 230, 207, 0.12);
-  --focus: #7cc4ff;
-  --ok: #4ade9a;
-  --ok-soft: rgba(74, 222, 154, 0.14);
-  --warn: #fbbf4d;
-  --warn-soft: rgba(251, 191, 77, 0.14);
-  --danger: #ff8a80;
-  --danger-soft: rgba(255, 138, 128, 0.14);
-  --neutral-soft: rgba(182, 194, 211, 0.12);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.55);
-  --scrim: rgba(2, 6, 14, 0.55);
-  --globe-bg: #050a14;
-  --marker: #2ee6cf;
-  --marker-ring: #04211e;
-  --marker-selected: #ffb020;
-  --flight: #7cc4ff;
+  --bg: #010603;
+  --surface: #030b06;
+  --surface-2: #06120a;
+  --surface-3: #0b1d12;
+  --surface-glass: rgba(2, 9, 5, 0.84);
+  --border: #0f3320;
+  --border-strong: #2e8a55;
+  --text: #d4ffe0;
+  --text-2: #93e0ad;
+  --text-3: #62b07f;
+  --accent: #00ff66;
+  --accent-hover: #6bffa6;
+  --accent-contrast: #00140a;
+  --accent-soft: rgba(0, 255, 102, 0.1);
+  --focus: #6bffa6;
+  --ok: #3dff8c;
+  --ok-soft: rgba(61, 255, 140, 0.12);
+  --warn: #ffd84d;
+  --warn-soft: rgba(255, 216, 77, 0.12);
+  --danger: #ff6b6b;
+  --danger-soft: rgba(255, 107, 107, 0.12);
+  --neutral-soft: rgba(147, 224, 173, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 255, 102, 0.04);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 255, 102, 0.06);
+  --scrim: rgba(0, 4, 2, 0.6);
+  --globe-bg: #000301;
+  --marker: #00ff66;
+  --marker-ring: #00140a;
+  --marker-selected: #ffd84d;
+  --flight: #7df9ff;
+  --glow: 0 0 14px rgba(0, 255, 102, 0.28);
+  --glow-text: 0 0 8px rgba(0, 255, 102, 0.55);
+  --scanlines: rgba(0, 255, 102, 0.035);
+  --map-tint: #7dffa8;
 }
 
 @media (prefers-reduced-motion: reduce) {

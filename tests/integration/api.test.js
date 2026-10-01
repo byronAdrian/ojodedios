@@ -135,7 +135,7 @@ test('safeFetch enforces host allowlist and size limit', async () => {
 test('health lists sources without touching upstreams', async () => {
   const fetchImpl = fakeFetch({});
   const body = await createHandlers({ env: {}, fetchImpl }).health(req('/api/health')).json();
-  assert.deepEqual(body.sources.map((s) => s.id), ['dgt', 'madrid', 'tfl', 'fintraffic']);
+  assert.deepEqual(body.sources.map((s) => s.id), ['dgt', 'madrid', 'euskadi', 'livestream', 'tfl', 'fintraffic']);
   assert.equal(fetchImpl.calls.length, 0);
 });
 
@@ -278,4 +278,44 @@ test('world flights: anonymous failure reports OpenSky and backs off', async () 
   assert.equal(res.status, 502);
   assert.match((await res.json()).message, /^OpenSky: Upstream HTTP 404/);
   assert.equal((await flights(req('/api/flights?scope=world'))).status, 503);
+});
+
+test('euskadi: paginated catalog through /api/cameras, with diagnostics notes', async () => {
+  const page1 = { ...JSON.parse(fixture('euskadi-cameras-sample.json')), totalPages: 2 };
+  const page2 = {
+    totalPages: 2,
+    currentPage: 2,
+    cameras: [{ cameraId: '900', sourceId: '5', cameraName: 'Plaza Moyúa', latitude: '43.2630', longitude: '-2.9350', urlImage: 'http://cams.example.org/x.jpg' }],
+  };
+  const API = 'https://api.euskadi.eus/traffic/v1.0/cameras?_page=';
+  const fetchImpl = fakeFetch({ [`${API}1`]: new Response(JSON.stringify(page1)), [`${API}2`]: new Response(JSON.stringify(page2)) });
+  const res = await createHandlers({ env: {}, fetchImpl }).cameras(req('/api/cameras?source=euskadi'));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.cameras.length, 7);
+  assert.ok(body.cameras.every((c) => c.providerId === 'euskadi' && c.communityCode === 'ES-PV'));
+  assert.deepEqual(body.notes.rejectedImageHosts, { 'cams.example.org': 1 });
+  assert.deepEqual(fetchImpl.calls.sort(), [`${API}1`, `${API}2`]);
+});
+
+test('euskadi frames: only the decoded official host is contacted, others are 404', async () => {
+  const id = Buffer.from('www.bizkaimove.com/camaras/cam1.jpg').toString('base64url');
+  const fetchImpl = fakeFetch({ 'http://www.bizkaimove.com/camaras/cam1.jpg': new Response(JPEG) });
+  const { frame } = createHandlers({ env: {}, fetchImpl });
+  assert.equal((await frame(req(`/api/frame?id=euskadi:${id}`))).status, 200);
+  for (const key of ['evil.com/x.jpg', '127.0.0.1/x.jpg', 'www.bizkaimove.com.evil.com/x.jpg']) {
+    const evil = Buffer.from(key).toString('base64url');
+    assert.equal((await frame(req(`/api/frame?id=euskadi:${evil}`))).status, 404, key);
+  }
+  assert.deepEqual(fetchImpl.calls, ['http://www.bizkaimove.com/camaras/cam1.jpg']);
+});
+
+test('euskadi frames: a redirect to another host is refused', async () => {
+  const id = Buffer.from('www.bizkaimove.com/camaras/cam1.jpg').toString('base64url');
+  const fetchImpl = fakeFetch({
+    'http://www.bizkaimove.com/camaras/cam1.jpg': new Response(null, { status: 302, headers: { Location: 'http://169.254.169.254/latest' } }),
+  });
+  const res = await createHandlers({ env: {}, fetchImpl }).frame(req(`/api/frame?id=euskadi:${id}`));
+  assert.equal(res.status, 502);
+  assert.deepEqual(fetchImpl.calls, ['http://www.bizkaimove.com/camaras/cam1.jpg']);
 });

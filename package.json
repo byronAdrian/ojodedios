@@ -17,7 +17,8 @@
     "test:unit": "node --test \"tests/unit/**/*.test.js\"",
     "test:integration": "node --test \"tests/integration/**/*.test.js\"",
     "test:e2e": "node tests/e2e/run.mjs",
-    "data:spain": "node scripts/build-spain-provinces.mjs"
+    "data:spain": "node scripts/build-spain-provinces.mjs",
+    "data:places": "node scripts/build-spain-places.mjs"
   },
   "dependencies": {
     "@cesium/engine": "26.3.0",

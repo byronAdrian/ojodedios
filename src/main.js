@@ -2,6 +2,7 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/layout.css';
 import './styles/components.css';
+import './styles/matrix.css';
 import { startApplication } from './app/application.js';
 
 const $ = (selector) => document.querySelector(selector);
@@ -17,6 +18,7 @@ const elements = {
   resultsPane: $('#results-pane'),
   detail: $('#detail'),
   flightDetail: $('#flight-detail'),
+  mosaic: $('#mosaic'),
   mapControls: $('#map-controls'),
   mapStatus: $('#map-status'),
   bottomNav: $('#bottom-nav'),
@@ -32,6 +34,7 @@ new ResizeObserver(([entry]) => {
   const height = Math.ceil(entry.target.getBoundingClientRect().height);
   document.documentElement.style.setProperty('--mobile-topbar-h', `${height}px`);
 }).observe(document.querySelector('.topbar'));
+
 
 /** Cesium is loaded lazily so the shell (search, filters, list) paints first. */
 async function createMap({ theme, ionToken, onSelect }) {

@@ -19,6 +19,7 @@ import { parseTflCatalog } from '../../server/sources/tfl.js';
 import { parseFintrafficCatalog } from '../../server/sources/fintraffic.js';
 import { createCamera } from '../../src/domain/camera.js';
 import { normalizeAdsbLol } from '../../server/sources/flights.js';
+import { loadLivestreams } from '../../server/sources/livestreams.js';
 
 const root = new URL('../../', import.meta.url);
 const fixture = (n) => readFileSync(new URL(`tests/fixtures/${n}`, root), 'utf8');
@@ -215,6 +216,19 @@ async function main() {
     await close(page);
   });
 
+  await step('detail badge follows the frame: thumbnail failed earlier, full image loads → "Imagen recibida"', async () => {
+    const page = await open('/', { failFrame: 'dgt:i2' });
+    const card = page.locator('.card').filter({ has: page.getByText('CGT Valladolid · cámara 2', { exact: true }) });
+    await card.getByText('No disponible').waitFor(); // the list thumbnail failed
+    // The provider recovers: later frame requests succeed (last registered route wins).
+    await page.route('**/api/frame?*', (route) => route.fulfill({ contentType: 'image/jpeg', body: JPEG }));
+    await card.click();
+    await page.locator('#detail .media__stamp', { hasText: 'Recibida' }).waitFor();
+    await page.locator('#detail .detail__status', { hasText: 'Imagen recibida' }).waitFor();
+    assert.equal(await page.locator('#detail .detail__status', { hasText: 'No disponible' }).count(), 0);
+    await close(page);
+  });
+
   await step('failing frame shows a clear error with retry and original-source link (no black box)', async () => {
     const page = await open('/', { failFrame: 'dgt:i2' });
     await page.locator('.card').filter({ has: page.getByText('CGT Valladolid · cámara 2', { exact: true }) }).click();
@@ -248,6 +262,30 @@ async function main() {
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('#f-province').inputValue(), 'ES-BI');
     assert.equal(await page.locator('#f-community').inputValue(), 'ES-PV');
+    await close(page);
+  });
+
+  await step('global search finds any town (Aspe), filters nearby and points to the closest camera', async () => {
+    const page = await open('/');
+    await page.locator('#search-input').fill('Aspe');
+    const option = page.locator('.search__option', { hasText: 'Localidad' }).first();
+    await option.waitFor();
+    assert.match(await option.innerText(), /Aspe[\s\S]*Alicante/);
+    await page.locator('.search__credit', { hasText: 'GeoNames' }).waitFor();
+    await page.keyboard.press('Enter');
+    await page.waitForURL(/city=g2521510/);
+    await page.getByRole('button', { name: 'Quitar filtro Cerca de Aspe' }).waitFor();
+    assert.equal(await count(page), '0 de 7 cámaras');
+    await page.getByText('No hay cámaras oficiales a menos de 25 km de Aspe').waitFor();
+    await page.getByRole('button', { name: 'Ver la más cercana' }).click();
+    await page.waitForURL(/cam=dgt%3Ai?122&/);
+    // A shared "cerca de Aspe" link restores the filter once the gazetteer loads.
+    await page.goto(`${page.url().split('?')[0]}?city=g2521510`);
+    await page.getByRole('button', { name: 'Quitar filtro Cerca de Aspe' }).waitFor();
+    // An unknown place id is dropped instead of leaving a broken filter.
+    await page.goto(`${page.url().split('?')[0]}?city=g1`);
+    await page.waitForFunction(() => !location.search.includes('city='));
+    noProblems(page);
     await close(page);
   });
 
@@ -325,6 +363,36 @@ async function main() {
     await toggle.click();
     assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
     await page.waitForURL(/fl=0/);
+    noProblems(page);
+    await close(page);
+  });
+
+  await step('control room: grid of live stills, URL state, Escape closes', async () => {
+    const page = await open('/');
+    await page.locator('.mosaic-toggle').click();
+    await page.waitForSelector('#mosaic:not([hidden]) .mosaic__tile');
+    assert.equal(await page.locator('.mosaic__tile').count(), 7);
+    await page.waitForFunction(() => [...document.querySelectorAll('.mosaic__age')].some((n) => n.textContent.startsWith('Recibida')));
+    await page.waitForURL(/mos=1/);
+    await page.screenshot({ path: 'test-results/desktop-mosaic.png' });
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#mosaic').isVisible(), false);
+    noProblems(page);
+    await close(page);
+  });
+
+  await step('live video: YouTube stream plays muted in the detail panel (privacy-enhanced embed)', async () => {
+    const live = loadLivestreams(ctx).map(createCamera);
+    const page = await open('/');
+    await page.route('**/api/cameras?source=livestream', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, cameras: live }) }));
+    await page.route(/youtube-nocookie\.com|ytimg\.com/, (route) => route.fulfill({ contentType: 'text/html', body: '<html></html>' }));
+    await page.goto(`${base}/?cam=${encodeURIComponent(live[0].id)}`);
+    await page.waitForSelector('#detail:not([hidden]) iframe.media__video', { timeout: 15_000 });
+    const src = await page.locator('iframe.media__video').getAttribute('src');
+    assert.match(src, /^https:\/\/www\.youtube-nocookie\.com\/embed\/[\w-]{11}\?autoplay=1&mute=1/);
+    assert.match(await page.locator('#detail').innerText(), /Vídeo en directo/);
+    assert.equal(await page.locator('#detail a', { hasText: 'Fuente original' }).getAttribute('href'), live[0].pageUrl);
     noProblems(page);
     await close(page);
   });

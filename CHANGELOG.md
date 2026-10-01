@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0 — 2026-10-01
+
+- **Diseño «Matrix»**: verde fósforo sobre negro en el tema oscuro, con tipografía de terminal para títulos y etiquetas, brillo sutil, líneas de barrido y tinte verde sobre el mapa. Las imágenes de las cámaras no se tiñen. El tema claro pasa a una variante verde «sobre papel». Contraste AA verificado.
+- **Nueva fuente: Open Data Euskadi**, con cámaras del Gobierno Vasco, las diputaciones y los ayuntamientos de Bilbao, Vitoria-Gasteiz y Donostia. La API es paginada y se descarga con concurrencia limitada; las coordenadas UTM se convierten a grados. Las imágenes se sirven por el proxy cerrado y solo se aceptan dominios oficiales; los hosts rechazados se informan en `notes`.
+- **Corrección**: la ficha de una cámara mostraba «No disponible» aunque la imagen hubiera cargado, cuando antes había fallado la miniatura. Ahora el estado se actualiza solo.
+- **Eliminado** el enlace «Zombis» de la barra superior.
+- **Búsqueda de cualquier municipio** (6.849 localidades de España con ≥ 1.000 habitantes, GeoNames CC BY 4.0). Al elegirlo, el mapa se centra y se filtran las cámaras oficiales a 25 km. El enlace se puede compartir (`city=g<id>`). Si no hay cámaras en ese radio, se indica la más cercana y su distancia.
+- El índice de municipios se carga bajo demanda, en un fragmento aparte de unos 116 KB comprimidos, al enfocar el buscador.
+- `npm run data:places` lo regenera de forma reproducible (tarball fijado y verificado con sha512, sin dependencias nuevas).
+
+## 0.2.0 — 2026-10-01
+
+- **Vídeo en directo**: nueva fuente de webcams públicas emitidas por YouTube, con una lista revisada a mano en `server/sources/livestreams.data.js`. Se reproducen silenciadas al empezar, con el reproductor sin cookies (`youtube-nocookie.com`). En el listado y en la sala de control aparecen con el distintivo «EN DIRECTO».
+- **Sala de control**: cuadrícula paginada de cámaras que se actualizan solas según la frecuencia de cada proveedor, con indicador «Recibida hace X». Se pausa con la pestaña oculta. Se guarda en la URL (`mos=1`).
+- CSP: `frame-src https://www.youtube-nocookie.com` y miniaturas de `i.ytimg.com`.
+
 ## 0.1.1 — 2026-10-01
 
 - Nombre de la aplicación: **OJO DEL CULO** (antes WORLDVIEW ESPAÑA). Los identificadores técnicos enviados a los proveedores usan `ojodedios`.

@@ -19,7 +19,7 @@ const LOAD_TIMEOUT_MS = 15_000;
 const MIN_REFRESH_S = 60;
 const DEFAULT_REFRESH_S = 120;
 
-const LIVENESS_LABEL = { live: 'En directo', periodic: 'Imagen periódica', archived: 'Contenido archivado' };
+const LIVENESS_LABEL = { live: 'Vídeo en directo', periodic: 'Imagen periódica', archived: 'Contenido archivado' };
 
 /** Append a cache-busting param bucketed to the refresh interval (CDN-friendly). */
 export function frameSrc(url, refreshSeconds, now = Date.now()) {
@@ -65,13 +65,27 @@ export function createCameraDetail({ container, actions }) {
       h('p', null, text),
       h('div', { class: 'actions actions--center' },
         retry ? h('button', { type: 'button', class: 'btn btn--sm', onClick: retry }, icon('refresh', 'icon icon--sm'), 'Reintentar') : null,
-        h('a', { class: 'btn btn--sm', href: provider.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, icon('external', 'icon icon--sm'), 'Abrir fuente')),
+        h('a', { class: 'btn btn--sm', href: camera.pageUrl || provider.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, icon('external', 'icon icon--sm'), 'Abrir fuente')),
     );
   }
 
   function mountMedia(media, camera) {
     if (camera.mediaType === 'none' || !camera.mediaUrl) {
       render(media, overlay('none', camera));
+      return;
+    }
+    if (camera.mediaType === 'youtube') {
+      // Real video. Muted autoplay only; the YouTube player shows its own state
+      // (offline, unavailable) and the "Fuente original" link stays available.
+      render(media, h('iframe', {
+        class: 'media__video',
+        src: camera.mediaUrl,
+        title: `Vídeo en directo: ${camera.name}`,
+        allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen',
+        allowfullscreen: true,
+        referrerpolicy: 'strict-origin-when-cross-origin',
+        loading: 'lazy',
+      }));
       return;
     }
     if (camera.mediaType !== 'image') {
@@ -127,6 +141,14 @@ export function createCameraDetail({ container, actions }) {
     load();
   }
 
+  /** Badge of the open camera; re-rendered when this session's observation changes. */
+  let statusSlot = null;
+
+  /** @param {'online' | 'offline' | undefined} observed */
+  function setObserved(observed) {
+    if (current && statusSlot) render(statusSlot, statusBadge(current, observed));
+  }
+
   /** @param {import('../domain/camera.js').Camera | null} camera @param {{ observed?: string }} [ctx] */
   function show(camera, { observed } = {}) {
     if (camera?.id === current?.id && camera) return;
@@ -149,6 +171,7 @@ export function createCameraDetail({ container, actions }) {
     favButton.addEventListener('click', () => paintFav(actions.toggleFavorite(camera.id)));
 
     const media = h('div', { class: 'media' });
+    statusSlot = h('span', { class: 'detail__status' }, statusBadge(camera, observed));
     const share = async () => {
       const url = actions.shareUrl(camera);
       if (navigator.share && matchMedia('(pointer: coarse)').matches) {
@@ -183,12 +206,12 @@ export function createCameraDetail({ container, actions }) {
         { class: 'detail__body' },
         media,
         h('div', { class: 'card__badges' },
-          statusBadge(camera, observed),
+          statusSlot,
           h('span', { class: 'badge' }, LIVENESS_LABEL[camera.liveness]),
           h('span', { class: 'badge' }, categoryLabel(camera.category))),
         h('div', { class: 'actions' },
           h('button', { type: 'button', class: 'btn btn--primary btn--sm', onClick: () => actions.center(camera) }, icon('target', 'icon icon--sm'), 'Centrar en el mapa'),
-          h('a', { class: 'btn btn--sm', href: provider.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, icon('external', 'icon icon--sm'), 'Fuente original'),
+          h('a', { class: 'btn btn--sm', href: camera.pageUrl || provider.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, icon('external', 'icon icon--sm'), 'Fuente original'),
           h('button', { type: 'button', class: 'btn btn--sm', onClick: share }, icon(navigator.share ? 'share' : 'link', 'icon icon--sm'), 'Compartir')),
         h('dl', { class: 'facts' },
           h('dt', null, 'Proveedor'), h('dd', null, provider.name),
@@ -206,6 +229,7 @@ export function createCameraDetail({ container, actions }) {
 
   return {
     show,
+    setObserved,
     get currentId() {
       return current?.id ?? null;
     },

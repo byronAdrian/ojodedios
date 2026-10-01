@@ -2,12 +2,13 @@
  * Shareable state ⇄ URL query string. Only validated values are restored, so
  * a hand-edited or malicious link can never put the app in an invalid state.
  *
- * Params: scope=es|world · ca · pr · city · country · cat (comma list) ·
- *         st (status) · q · fav=1 · cam (camera id) · at=lat,lon,km · mode=2d · fl=0 (flights off)
+ * Params: scope=es|world · ca · pr · city (quick city or place `g…`) · country · cat (comma list) ·
+ *         st (status) · q · fav=1 · cam (camera id) · at=lat,lon,km · mode=2d · fl=0 (flights off) · mos=1 (control room)
  */
 import { getCommunity, getProvince, getQuickCity, communityOfProvince } from '../domain/spain.js';
 import { CATEGORIES, COUNTRY_NAMES } from '../domain/camera.js';
 import { defaultFilters } from '../domain/filters.js';
+import { isPlaceId } from '../domain/places.js';
 
 const CATEGORY_IDS = new Set(CATEGORIES.map((c) => c.id));
 const STATUSES = new Set(['all', 'active', 'online', 'offline']);
@@ -15,7 +16,7 @@ const CAMERA_ID = /^[a-z]{2,16}:[A-Za-z0-9._-]{1,240}$/;
 
 /**
  * @typedef {{ lat: number, lon: number, km: number }} ViewTarget
- * @typedef {{ filters: import('../domain/filters.js').FilterState, cameraId: string | null, view: ViewTarget | null, mode: '3d' | '2d', flights?: boolean }} UrlState
+ * @typedef {{ filters: import('../domain/filters.js').FilterState, cameraId: string | null, view: ViewTarget | null, mode: '3d' | '2d', flights?: boolean, mosaic?: boolean }} UrlState
  */
 
 /** @returns {UrlState} */
@@ -33,7 +34,8 @@ export function parseUrlState(search) {
     filters.community = community;
   }
   const city = params.get('city') || '';
-  if (getQuickCity(city)) filters.city = city;
+  // Place ids are only checked for shape here; the app drops unknown ones once the gazetteer loads.
+  if (getQuickCity(city) || isPlaceId(city)) filters.city = city;
   const country = (params.get('country') || '').toUpperCase();
   if (COUNTRY_NAMES[country]) filters.country = country;
 
@@ -52,11 +54,11 @@ export function parseUrlState(search) {
       Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && km > 0.05 && km <= 40_000) {
     view = { lat, lon, km };
   }
-  return { filters, cameraId, view, mode: params.get('mode') === '2d' ? '2d' : '3d', flights: params.get('fl') !== '0' };
+  return { filters, cameraId, view, mode: params.get('mode') === '2d' ? '2d' : '3d', flights: params.get('fl') !== '0', mosaic: params.get('mos') === '1' };
 }
 
 /** @param {UrlState} state @returns {string} query string without "?" ('' when default) */
-export function serializeUrlState({ filters, cameraId, view, mode, flights = true }) {
+export function serializeUrlState({ filters, cameraId, view, mode, flights = true, mosaic = false }) {
   const params = new URLSearchParams();
   if (filters.scope === 'world') params.set('scope', 'world');
   if (filters.scope === 'world' && filters.country) params.set('country', filters.country);
@@ -71,6 +73,7 @@ export function serializeUrlState({ filters, cameraId, view, mode, flights = tru
   if (view) params.set('at', `${view.lat.toFixed(4)},${view.lon.toFixed(4)},${Math.round(view.km * 10) / 10}`);
   if (mode === '2d') params.set('mode', '2d');
   if (!flights) params.set('fl', '0');
+  if (mosaic) params.set('mos', '1');
   return params.toString();
 }
 

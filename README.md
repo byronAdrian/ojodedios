@@ -22,6 +22,11 @@ Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
   zoom, centrado en España y vista global.
 - **Buscador global** (países, comunidades, provincias, ciudades, cámaras y categorías), con
   *debounce*, en memoria y manejable con teclado.
+- **Cualquier municipio** de más de 1.000 habitantes (6.849 localidades de GeoNames): al elegirlo, el mapa se centra y
+  se muestran las cámaras oficiales a menos de 25 km. Si no hay ninguna, indica la más cercana y a qué distancia.
+  El índice se descarga solo al usar el buscador.
+- **Vídeo en directo** de webcams públicas emitidas por YouTube (lista ampliable en `server/sources/livestreams.data.js`). La DGT y Madrid publican imágenes periódicas, no vídeo.
+- **Sala de control**: cuadrícula de cámaras que se actualizan solas.
 - **Panel de cámara**: imagen con refresco respetuoso, estados de error claros, proveedor,
   licencia, enlace a la fuente original, centrar en el mapa y compartir.
 - **Contadores honestos**: total, verificadas por el proveedor, con imagen y no disponibles
@@ -31,7 +36,7 @@ Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
 
 ## Fuentes integradas
 
-DGT (red estatal salvo País Vasco y Cataluña), Ayuntamiento de Madrid, TfL y Fintraffic.
+DGT (red estatal salvo País Vasco y Cataluña), Open Data Euskadi (País Vasco, con Bilbao, Vitoria-Gasteiz y Donostia), Ayuntamiento de Madrid, TfL y Fintraffic.
 Las condiciones, la atribución y las limitaciones de cada una están en
 [DATA_SOURCES.md](DATA_SOURCES.md). No se inventan cámaras, ubicaciones ni disponibilidad.
 
@@ -54,6 +59,7 @@ No se necesita ninguna clave. Las variables opcionales están en `.env.example`.
 | `npm run test:e2e` | E2E (Playwright) sobre el build |
 | `npm run doctor` | Comprobación del entorno |
 | `npm run data:spain` | Regenera los polígonos de provincias |
+| `npm run data:places` | Regenera el índice de municipios (GeoNames) |
 
 ## Despliegue
 
