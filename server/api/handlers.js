@@ -118,7 +118,9 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
         headers: { Accept: 'image/*' },
       });
       const type = sniffImageType(body);
-      if (!type) return jsonResponse(502, { error: 'not_an_image' }, { 'Cache-Control': 'public, s-maxage=30' });
+      if (!type) {
+        return jsonResponse(502, { error: 'not_an_image', message: `El proveedor devolvió ${body.length} bytes que no son una imagen` }, { 'Cache-Control': 'public, s-maxage=30' });
+      }
       return new Response(request.method === 'HEAD' ? null : body, {
         status: 200,
         headers: {
@@ -130,7 +132,9 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
       });
     } catch (error) {
       const status = error instanceof UpstreamError && error.status === 404 ? 404 : 502;
-      return jsonResponse(status, { error: 'frame_unavailable' }, { 'Cache-Control': 'public, s-maxage=30' });
+      // The reason (e.g. "Upstream HTTP 403", "Upstream timeout") names no secret; it makes provider blocks diagnosable.
+      const message = error instanceof UpstreamError ? error.message : 'Error interno';
+      return jsonResponse(status, { error: 'frame_unavailable', message }, { 'Cache-Control': 'public, s-maxage=30' });
     }
   }
 

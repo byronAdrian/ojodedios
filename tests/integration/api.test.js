@@ -181,3 +181,10 @@ test('frame proxy serves v3.6 DGT ids from etraffic.dgt.es over https', async ()
   const { frame } = createHandlers({ env: {}, fetchImpl });
   assert.equal((await frame(req('/api/frame?id=dgt:176130'))).status, 200);
 });
+
+test('frame errors explain the upstream reason for diagnosis', async () => {
+  const fetchImpl = fakeFetch({ 'https://etraffic.dgt.es/camarasEtraffic/9.jpg': new Response('no', { status: 403 }) });
+  const res = await createHandlers({ env: {}, fetchImpl }).frame(req('/api/frame?id=dgt:9'));
+  assert.equal(res.status, 502);
+  assert.deepEqual(await res.json(), { error: 'frame_unavailable', message: 'Upstream HTTP 403' });
+});
