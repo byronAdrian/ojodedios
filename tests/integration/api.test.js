@@ -135,7 +135,7 @@ test('safeFetch enforces host allowlist and size limit', async () => {
 test('health lists sources without touching upstreams', async () => {
   const fetchImpl = fakeFetch({});
   const body = await createHandlers({ env: {}, fetchImpl }).health(req('/api/health')).json();
-  assert.deepEqual(body.sources.map((s) => s.id), ['dgt', 'madrid', 'euskadi', 'livestream', 'tfl', 'fintraffic']);
+  assert.deepEqual(body.sources.map((s) => s.id), ['dgt', 'madrid', 'euskadi', 'livestream', 'tfl', 'caltrans', 'fintraffic']);
   assert.equal(fetchImpl.calls.length, 0);
 });
 
@@ -318,4 +318,100 @@ test('euskadi frames: a redirect to another host is refused', async () => {
   const res = await createHandlers({ env: {}, fetchImpl }).frame(req(`/api/frame?id=euskadi:${id}`));
   assert.equal(res.status, 502);
   assert.deepEqual(fetchImpl.calls, ['http://www.bizkaimove.com/camaras/cam1.jpg']);
+});
+
+const USGS = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+const FIRMS_KEY = 'abcdef0123456789abcdef0123456789';
+const firmsAt = (bbox) => `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${FIRMS_KEY}/VIIRS_SNPP_NRT/${bbox}/1`;
+
+test('GET /api/quakes: parsed USGS feed, cached and coalesced, stale copy on outage', async () => {
+  let clock = 0;
+  const routes = { [USGS]: new Response(fixture('usgs-sample.geojson')) };
+  const fetchImpl = fakeFetch(routes);
+  const { quakes } = createHandlers({ env: {}, fetchImpl, now: () => new Date(clock) });
+  const [a, b] = await Promise.all([quakes(req('/api/quakes')), quakes(req('/api/quakes'))]);
+  assert.equal(a.status, 200);
+  assert.match(a.headers.get('cache-control'), /s-maxage=120/);
+  const body = await a.json();
+  assert.equal(body.events.length, 4);
+  assert.match(body.attribution, /USGS/);
+  assert.equal((await b.json()).events.length, 4);
+  assert.equal(fetchImpl.calls.length, 1, 'concurrent requests share one upstream call');
+
+  clock += 10 * 60_000; // past the TTL, and upstream is now down: the last good copy is served, flagged stale
+  routes[USGS] = new Response('x', { status: 503 });
+  const stale = await quakes(req('/api/quakes'));
+  assert.equal(stale.status, 200);
+  const staleBody = await stale.json();
+  assert.equal(staleBody.stale, true);
+  assert.equal(staleBody.events.length, 4);
+
+  // A cold instance with nothing cached reports the outage instead of an empty map.
+  const down = createHandlers({ env: {}, fetchImpl: fakeFetch({ [USGS]: new Response('x', { status: 503 }) }) });
+  assert.equal((await down.quakes(req('/api/quakes'))).status, 502);
+});
+
+test('GET /api/quakes can be disabled and rejects non-GET', async () => {
+  const { quakes } = createHandlers({ env: { SOURCE_QUAKES_ENABLED: '0' }, fetchImpl: fakeFetch({}) });
+  assert.deepEqual(await (await quakes(req('/api/quakes'))).json(), { enabled: false, events: [] });
+  assert.equal((await quakes(req('/api/quakes', { method: 'POST' }))).status, 405);
+});
+
+test('GET /api/fires: without a key it says so (no fake empty map), bad bbox is 400', async () => {
+  const fetchImpl = fakeFetch({});
+  const { fires } = createHandlers({ env: {}, fetchImpl });
+  const res = await fires(req('/api/fires?bbox=-10,35,5,45'));
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { enabled: false, reason: 'missing_key', points: [] });
+  assert.equal((await fires(req('/api/fires?bbox=-180,-90,180,90'))).status, 400);
+  assert.equal((await fires(req('/api/fires'))).status, 400);
+  assert.deepEqual(fetchImpl.calls, []);
+});
+
+test('GET /api/fires: snapped bbox, parsed points, key never in the response', async () => {
+  const fetchImpl = fakeFetch({ [firmsAt('-10,35,5,45')]: new Response(fixture('firms-sample.csv')) });
+  const { fires } = createHandlers({ env: { FIRMS_MAP_KEY: FIRMS_KEY }, fetchImpl });
+  const res = await fires(req('/api/fires?bbox=-9.4,36.1,3.3,43.8'));
+  assert.equal(res.status, 200);
+  const text = await res.text();
+  assert.ok(!text.includes(FIRMS_KEY), 'the key must never reach the client');
+  const body = JSON.parse(text);
+  assert.equal(body.points.length, 3);
+  assert.deepEqual(body.bbox, { west: -10, south: 35, east: 5, north: 45 });
+  assert.deepEqual(fetchImpl.calls, [firmsAt('-10,35,5,45')]);
+});
+
+test('GET /api/fires: upstream errors are reported without leaking the key', async () => {
+  const leaky = new Error(`connect failed for ${firmsAt('-10,35,5,45')}`);
+  for (const route of [new Response('Invalid MAP_KEY.'), new Response('x', { status: 403 }), leaky]) {
+    const { fires } = createHandlers({ env: { FIRMS_MAP_KEY: FIRMS_KEY }, fetchImpl: fakeFetch({ [firmsAt('-10,35,5,45')]: route }) });
+    const res = await fires(req('/api/fires?bbox=-10,35,5,45'));
+    assert.ok(res.status >= 500);
+    const text = await res.text();
+    assert.ok(!text.includes(FIRMS_KEY), text);
+  }
+});
+
+test('caltrans: district files through /api/cameras, failed districts reported in notes', async () => {
+  const routes = {};
+  for (let d = 1; d <= 12; d += 1) {
+    const url = `https://cwwp2.dot.ca.gov/data/d${d}/cctv/cctvStatusD${String(d).padStart(2, '0')}.json`;
+    routes[url] = d === 7 ? new Response(fixture('caltrans-sample.json')) : d === 3 ? new Response('x', { status: 500 }) : new Response('{"data":[]}');
+  }
+  const res = await createHandlers({ env: {}, fetchImpl: fakeFetch(routes) }).cameras(req('/api/cameras?source=caltrans'));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.cameras.length, 1);
+  assert.equal(body.cameras[0].countryCode, 'US');
+  assert.equal(body.notes.failedDistricts.length, 1);
+  assert.match(body.notes.failedDistricts[0], /^D3:/);
+});
+
+test('caltrans frames: only the official still path is fetched', async () => {
+  const path = '/data/d7/cctv/image/i110196avenue26offramp/i110196avenue26offramp.jpg';
+  const fetchImpl = fakeFetch({ [`https://cwwp2.dot.ca.gov${path}`]: new Response(JPEG) });
+  const { frame } = createHandlers({ env: {}, fetchImpl });
+  assert.equal((await frame(req(`/api/frame?id=caltrans:${Buffer.from(path).toString('base64url')}`))).status, 200);
+  assert.equal((await frame(req(`/api/frame?id=caltrans:${Buffer.from('/latest/meta-data').toString('base64url')}`))).status, 404);
+  assert.equal(fetchImpl.calls.length, 1);
 });

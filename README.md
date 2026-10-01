@@ -27,6 +27,7 @@ Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
   El índice se descarga solo al usar el buscador.
 - **Vídeo en directo** de webcams públicas emitidas por YouTube (lista ampliable en `server/sources/livestreams.data.js`). La DGT y Madrid publican imágenes periódicas, no vídeo.
 - **Sala de control**: cuadrícula de cámaras que se actualizan solas.
+- **Panel de capas**: cámaras, vuelos, **terremotos** (USGS, últimas 24 h, tamaño según magnitud) e **incendios** (NASA FIRMS, focos de calor por satélite; requiere `FIRMS_MAP_KEY`). Cada capa indica su estado y se guarda en la URL.
 - **Panel de cámara**: imagen con refresco respetuoso, estados de error claros, proveedor,
   licencia, enlace a la fuente original, centrar en el mapa y compartir.
 - **Contadores honestos**: total, verificadas por el proveedor, con imagen y no disponibles
@@ -36,7 +37,7 @@ Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
 
 ## Fuentes integradas
 
-DGT (red estatal salvo País Vasco y Cataluña), Open Data Euskadi (País Vasco, con Bilbao, Vitoria-Gasteiz y Donostia), Ayuntamiento de Madrid, TfL y Fintraffic.
+DGT (red estatal salvo País Vasco y Cataluña), Open Data Euskadi (País Vasco, con Bilbao, Vitoria-Gasteiz y Donostia), Ayuntamiento de Madrid, TfL, Fintraffic y Caltrans (California).
 Las condiciones, la atribución y las limitaciones de cada una están en
 [DATA_SOURCES.md](DATA_SOURCES.md). No se inventan cámaras, ubicaciones ni disponibilidad.
 

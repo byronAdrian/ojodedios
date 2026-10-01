@@ -14,6 +14,8 @@ identificación o seguimiento de personas, ni grabación o archivo de imágenes.
 |---|---|---|
 | `GET /api/cameras?source=` | id de un proveedor registrado | Lista cerrada (`server/sources/registry.js`); 400 para cualquier otro valor |
 | `GET /api/frame?id=` | `dgt:<id>`, `madrid:<base64url>` o `euskadi:<base64url>` | **No es un proxy abierto**: la URL se construye y se vuelve a validar en el servidor. Madrid y Euskadi codifican host+ruta: al decodificarlos se exige un host oficial (lista fija o dominio oficial de una administración vasca), una ruta `.jpg/.png` sin `..`, y que no haya credenciales, puerto ni query. La petición y sus redirecciones solo pueden ir a los hosts oficiales del proveedor; en Euskadi, únicamente al host decodificado. |
+| `GET /api/quakes` | — | URL fija de USGS; caché compartida en la CDN |
+| `GET /api/fires?bbox=` | `w,s,e,n` validado, ajustado a una rejilla de 5° y limitado a 40°×30° | URL construida en el servidor; la clave `FIRMS_MAP_KEY` se redacta en cualquier mensaje de error |
 | `GET /api/health` | — | No contacta con terceros |
 
 Medidas en `server/http/safeFetch.js` y `server/api/handlers.js`:

@@ -21,6 +21,8 @@ import { createMapControls, createMapStatus, createBottomNav, createToasts } fro
 import { debounce } from '../ui/dom.js';
 import { createFlightsController } from '../flights/flightsController.js';
 import { createMosaic } from '../ui/mosaic.js';
+import { createHazardsController } from '../hazards/hazardsController.js';
+import { hazardStatusLabel } from '../hazards/hazards.js';
 
 const DESKTOP = '(min-width: 900px)';
 
@@ -61,6 +63,9 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
     sheet: initial.cameraId && !isDesktop() ? 'detail' : 'none',
     mode: initial.mode,
     flightsOn: initial.flights,
+    camerasOn: initial.cameras,
+    quakesOn: initial.quakes,
+    firesOn: initial.fires,
     mosaic: initial.mosaic,
     flightSelected: false,
   });
@@ -81,8 +86,34 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
     onStatus(info) {
       lastFlightInfo = info;
       mapControls?.setFlights(store.get().flightsOn, info);
+      paintLayers();
     },
   });
+
+  /** @type {Record<'quakes' | 'fires', object>} */
+  const hazardStatus = { quakes: { state: 'off' }, fires: { state: 'off' } };
+  const hazards = createHazardsController({
+    container: elements.hazardCard,
+    getMap: () => map,
+    createLayer: (globe, opts) => map.createHazardLayer(globe, opts),
+    onStatus(kind, status) {
+      hazardStatus[kind] = status;
+      paintLayers();
+    },
+  });
+
+  /** Layers panel: one switch per layer with a one-line, honest status. */
+  function paintLayers() {
+    if (!mapControls) return;
+    const s = store.get();
+    const flightDetail = !s.flightsOn ? 'Desactivado' : lastFlightInfo.status === 'error' ? 'Fuente no disponible' : `${lastFlightInfo.count ?? 0} en vista`;
+    mapControls.setLayers({
+      cameras: { on: s.camerasOn, detail: s.camerasOn ? `${getDerived(s).filtered.length} con los filtros actuales` : 'Desactivado' },
+      flights: { on: s.flightsOn, detail: flightDetail },
+      quakes: { on: s.quakesOn, detail: s.quakesOn ? hazardStatusLabel('quakes', hazardStatus.quakes) : 'Desactivado' },
+      fires: { on: s.firesOn, detail: s.firesOn ? hazardStatusLabel('fires', hazardStatus.fires) : 'Desactivado' },
+    });
+  }
   let map = null; // { globe, layer } once Cesium is ready
   const staticIndex = buildStaticIndex();
   let placeIndex = [];
@@ -301,6 +332,7 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       map?.globe.setTheme(resolved);
       map?.layer.refreshTheme();
       flights.refreshTheme();
+      hazards.refreshTheme();
     },
   });
   const searchBox = createSearchBox({
@@ -350,6 +382,10 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       toggleMode: () => store.set({ mode: store.get().mode === '2d' ? '3d' : '2d' }),
       toggleFlights: () => store.set({ flightsOn: !store.get().flightsOn }),
       toggleMosaic: () => store.set({ mosaic: !store.get().mosaic, sheet: 'none' }),
+      setLayer(key, on) {
+        const field = { cameras: 'camerasOn', flights: 'flightsOn', quakes: 'quakesOn', fires: 'firesOn' }[key];
+        if (field) store.set({ [field]: Boolean(on) });
+      },
     },
   });
 
@@ -365,7 +401,8 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
   elements.scrim.addEventListener('click', () => store.set({ sheet: 'none' }));
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
-    if (flights.selectedHex) flights.clearSelection();
+    if (!elements.hazardCard.hidden) hazards.clearSelection();
+    else if (flights.selectedHex) flights.clearSelection();
     else if (store.get().selectedId) actions.close();
     else if (store.get().mosaic) actions.closeMosaic();
     else if (store.get().sheet !== 'none') store.set({ sheet: 'none' });
@@ -381,6 +418,9 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       mode: s.mode,
       flights: s.flightsOn,
       mosaic: s.mosaic,
+      cameras: s.camerasOn,
+      quakes: s.quakesOn,
+      fires: s.firesOn,
     });
     const next = `${location.pathname}${query ? `?${query}` : ''}`;
     if (next !== `${location.pathname}${location.search}`) history.replaceState(null, '', next);
@@ -465,6 +505,11 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       bottomNav.update({ sheet: s.sheet, filterCount: countActiveFilters(s.filters) });
     }
 
+    if (changed('camerasOn')) map?.layer.setVisible(s.camerasOn);
+    if (changed('quakesOn')) hazards.setEnabled('quakes', s.quakesOn);
+    if (changed('firesOn')) hazards.setEnabled('fires', s.firesOn);
+    if (['camerasOn', 'flightsOn', 'quakesOn', 'firesOn', 'filters', 'catalog'].some(changed)) paintLayers();
+
     if (changed('flightsOn')) {
       flights.setEnabled(s.flightsOn);
       mapControls.setFlights(s.flightsOn, lastFlightInfo);
@@ -520,6 +565,8 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
     }, 250);
     map.globe.onViewChanged(onView);
     flights.attach(map.globe);
+    map.layer.setVisible(s.camerasOn);
+    hazards.attach(map.globe);
     map.globe.onViewChanged(debounce(() => flights.viewChanged(), 600));
     flights.viewChanged(); // first query as soon as the globe can report its view
   } catch (error) {

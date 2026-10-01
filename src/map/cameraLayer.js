@@ -183,6 +183,12 @@ export function createCameraLayer(globe, { onSelect }) {
       scene.requestRender();
     },
 
+    /** Show or hide every camera marker (layers panel). */
+    setVisible(on) {
+      source.show = on;
+      scene.requestRender();
+    },
+
     setSelected(id) {
       const previous = selectedId;
       selectedId = id;

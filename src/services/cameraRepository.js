@@ -8,7 +8,7 @@ import { createCamera } from '../domain/camera.js';
 /** Which providers each explorer scope needs. */
 export const SCOPE_SOURCES = Object.freeze({
   spain: ['dgt', 'madrid', 'euskadi', 'livestream'],
-  world: ['dgt', 'madrid', 'euskadi', 'livestream', 'tfl', 'fintraffic'],
+  world: ['dgt', 'madrid', 'euskadi', 'livestream', 'tfl', 'fintraffic', 'caltrans'],
 });
 
 /**

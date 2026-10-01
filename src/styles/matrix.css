@@ -77,17 +77,17 @@
   text-shadow: var(--glow-text);
 }
 
-/* ---------- Map: green phosphor tint + scanlines (dark only) ---------- */
+/* ---------- Map: vignette + scanlines (dark only) ----------
+ * The green tint itself is applied to the basemap inside Cesium (globe.js),
+ * not here: a CSS blend over the canvas would also tint the markers and make
+ * earthquake/fire colours unreadable. */
 .globe::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.45) 100%),
-    var(--map-tint);
-  mix-blend-mode: multiply;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.4) 100%);
 }
 :root:not([data-theme='dark']) .globe::after {
   display: none;

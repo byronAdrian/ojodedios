@@ -1015,3 +1015,130 @@
   letter-spacing: 0.04em;
 }
 
+
+/* ---------- Layers panel ---------- */
+.layers-panel {
+  position: absolute;
+  top: 0;
+  right: calc(var(--touch) + var(--space-3));
+  width: min(280px, calc(100vw - var(--touch) - 48px));
+  padding: var(--space-3);
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), var(--glow);
+}
+.layers-panel__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.layers-panel__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.layers-panel__row:hover {
+  background: var(--neutral-soft);
+}
+.layers-panel__row input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  flex: none;
+}
+.layers-panel__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+  border: 1px solid var(--marker-ring);
+}
+.layers-panel__swatch--cameras { background: var(--marker); }
+.layers-panel__swatch--flights { background: var(--flight); }
+.layers-panel__swatch--quakes { background: var(--quake); }
+.layers-panel__swatch--fires { background: var(--fire); }
+.layers-panel__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.layers-panel__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.layers-panel__detail {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+}
+
+/* ---------- Hazard card (earthquake / fire) ---------- */
+.hazard-card {
+  position: absolute;
+  left: calc(var(--space-3) + var(--safe-left));
+  bottom: 44px;
+  z-index: var(--z-map-controls);
+  width: min(340px, calc(100% - 96px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), var(--glow);
+}
+.hazard-card__header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+.hazard-card__kind {
+  grid-column: 1;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.hazard-card__kind--quake { color: var(--quake); }
+.hazard-card__kind--fire { color: var(--fire); }
+.hazard-card__title {
+  grid-column: 1;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+.hazard-card__header .icon-btn {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.hazard-card__place {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+.hazard-card .btn {
+  align-self: flex-start;
+}
+.facts--compact {
+  gap: var(--space-1) var(--space-3);
+}
+@media (max-width: 899px) {
+  .hazard-card {
+    bottom: calc(var(--bottomnav-h) + var(--safe-bottom) + 52px);
+    width: calc(100% - 96px);
+  }
+}

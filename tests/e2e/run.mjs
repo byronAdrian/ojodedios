@@ -20,6 +20,7 @@ import { parseFintrafficCatalog } from '../../server/sources/fintraffic.js';
 import { createCamera } from '../../src/domain/camera.js';
 import { normalizeAdsbLol } from '../../server/sources/flights.js';
 import { loadLivestreams } from '../../server/sources/livestreams.js';
+import { parseUsgsFeed } from '../../server/sources/usgs.js';
 
 const root = new URL('../../', import.meta.url);
 const fixture = (n) => readFileSync(new URL(`tests/fixtures/${n}`, root), 'utf8');
@@ -31,6 +32,7 @@ const catalogs = {
   fintraffic: parseFintrafficCatalog(JSON.parse(fixture('fintraffic-sample.json')), ctx).map(createCamera),
 };
 const aircraft = normalizeAdsbLol(JSON.parse(fixture('adsblol-sample.json')));
+const quakeEvents = parseUsgsFeed(JSON.parse(fixture('usgs-sample.geojson')));
 const JPEG = Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64');
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 
@@ -99,6 +101,10 @@ async function main() {
       if (source === failSource) return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"upstream_unavailable","message":"Upstream HTTP 503"}' });
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, sourceId: source, checkedAt: ctx.checkedAt, cameras: catalogs[source] ?? [] }) });
     });
+    await page.route('**/api/quakes', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, source: 'usgs', attribution: 'USGS', events: quakeEvents }) }));
+    await page.route('**/api/fires?*', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: false, reason: 'missing_key', points: [] }) }));
     await page.route('**/api/flight-trace?*', (route) =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify({ hex: '400cd8', source: 'adsb.lol', points: [[-0.45, 51.47, 0], [-1.5, 47, 11000], [-0.6, 41, 10668], [-0.5, 40.12, 10668]] }) }));
     await page.route('**/api/flights?*', (route) =>
@@ -393,6 +399,34 @@ async function main() {
     assert.match(src, /^https:\/\/www\.youtube-nocookie\.com\/embed\/[\w-]{11}\?autoplay=1&mute=1/);
     assert.match(await page.locator('#detail').innerText(), /Vídeo en directo/);
     assert.equal(await page.locator('#detail a', { hasText: 'Fuente original' }).getAttribute('href'), live[0].pageUrl);
+    noProblems(page);
+    await close(page);
+  });
+
+  await step('layers panel: earthquakes on by default, fires explain the missing key, switches persist in the URL', async () => {
+    const page = await open('/');
+    await page.getByRole('button', { name: 'Capas del mapa' }).click();
+    const panel = page.locator('#layers-panel');
+    await panel.waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Capas del mapa' }).getAttribute('aria-expanded'), 'true');
+    await panel.getByText('4 en las últimas 24 h').waitFor();
+    assert.equal(await page.locator('#layer-quakes').isChecked(), true);
+    assert.equal(await page.locator('#layer-fires').isChecked(), false);
+    await page.locator('#layer-fires').check();
+    await panel.getByText('Requiere configurar FIRMS_MAP_KEY').waitFor();
+    await page.waitForURL(/fi=1/);
+    await page.locator('#layer-quakes').uncheck();
+    await page.locator('#layer-cameras').uncheck();
+    await page.waitForURL(/eq=0/);
+    await page.waitForURL(/cams=0/);
+    await page.keyboard.press('Escape');
+    assert.equal(await panel.isHidden(), true);
+    // A shared link restores the switches.
+    await page.goto(page.url());
+    await page.getByRole('button', { name: 'Capas del mapa' }).click();
+    assert.equal(await page.locator('#layer-quakes').isChecked(), false);
+    assert.equal(await page.locator('#layer-fires').isChecked(), true);
+    assert.equal(await page.locator('#layer-cameras').isChecked(), false);
     noProblems(page);
     await close(page);
   });

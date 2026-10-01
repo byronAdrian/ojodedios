@@ -30,14 +30,19 @@ const basemaps = resolveBasemaps(import.meta.env);
 /** Cesium renders Credit strings as HTML: escape so a configured attribution can't inject markup. */
 const escapeHtml = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-const createBasemap = (theme) =>
-  new ImageryLayer(
+function createBasemap(theme) {
+  const layer = new ImageryLayer(
     new UrlTemplateImageryProvider({
       url: basemaps[theme] ?? basemaps.light,
       maximumLevel: basemaps.maximumLevel,
       credit: new Credit(escapeHtml(basemaps.attribution), true),
     }),
   );
+  // Dark "Matrix" theme: let the green globe base colour show through the gray
+  // tiles. Only the basemap is tinted; markers keep their true colours.
+  if (theme === 'dark') layer.alpha = 0.82;
+  return layer;
+}
 
 const prefersReducedMotion = () =>
   globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -75,7 +80,7 @@ export function createGlobe(container, { theme, creditContainer, ionToken }) {
   const applySceneColors = (mode) => {
     const dark = mode === 'dark';
     scene.backgroundColor = Color.fromCssColorString(dark ? '#000301' : '#dfeae2');
-    scene.globe.baseColor = Color.fromCssColorString(dark ? '#03100a' : '#cfe0d4');
+    scene.globe.baseColor = Color.fromCssColorString(dark ? '#0a3a1e' : '#cfe0d4');
     if (scene.skyAtmosphere) scene.skyAtmosphere.show = true;
     if (scene.skyBox) scene.skyBox.show = dark;
     if (scene.sun) scene.sun.show = false;
