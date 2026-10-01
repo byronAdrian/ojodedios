@@ -6,6 +6,7 @@
 import { SOURCES, isSourceEnabled, loadCatalog } from '../sources/registry.js';
 import { safeFetch, UpstreamError } from '../http/safeFetch.js';
 import { createRateLimiter, clientKey } from './rateLimit.js';
+import { ADSB_LOL_HOSTS, adsbLolUrl, normalizeAdsbLol, quantiseFlightQuery } from '../sources/flights.js';
 
 const CATALOG_TTL_MS = 15 * 60 * 1000;
 const FRAME_MAX_BYTES = 3 * 1024 * 1024;
@@ -138,6 +139,43 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
     }
   }
 
+  /** @type {Map<string, { at: number, body: object }>} */
+  const flightCache = new Map();
+  const FLIGHT_TTL_MS = 10_000;
+  const FLIGHT_STALE_MS = 120_000;
+  let flightCooldownUntil = 0;
+
+  async function flights(request) {
+    const blocked = methodGuard(request);
+    if (blocked) return blocked;
+    if (String(env.SOURCE_FLIGHTS_ENABLED ?? '1') === '0') {
+      return jsonResponse(200, { enabled: false, aircraft: [] }, { 'Cache-Control': 'public, s-maxage=300' });
+    }
+    const params = new URL(request.url).searchParams;
+    const query = quantiseFlightQuery(params.get('lat'), params.get('lon'), params.get('dist'));
+    if (!query) return jsonResponse(400, { error: 'invalid_query' });
+    const key = `${query.lat},${query.lon},${query.dist}`;
+    const t = now().getTime();
+    const hit = flightCache.get(key);
+    const headers = { 'Cache-Control': 'public, max-age=5, s-maxage=10, stale-while-revalidate=20' };
+    if (hit && t - hit.at < FLIGHT_TTL_MS) return jsonResponse(200, hit.body, headers);
+    if (t < flightCooldownUntil) {
+      if (hit && t - hit.at < FLIGHT_STALE_MS) return jsonResponse(200, { ...hit.body, stale: true }, headers);
+      return jsonResponse(503, { error: 'rate_limited', message: 'adsb.lol en enfriamiento' }, { 'Retry-After': '30' });
+    }
+    try {
+      const { body } = await safeFetch(adsbLolUrl(query), { allowedHosts: ADSB_LOL_HOSTS, timeoutMs: 8_000, maxBytes: 8 * 1024 * 1024, fetchImpl, headers: { Accept: 'application/json' } });
+      const result = { enabled: true, query, fetchedAt: now().toISOString(), aircraft: normalizeAdsbLol(JSON.parse(new TextDecoder().decode(body))) };
+      if (flightCache.size > 500) flightCache.delete(flightCache.keys().next().value);
+      flightCache.set(key, { at: t, body: result });
+      return jsonResponse(200, result, headers);
+    } catch (error) {
+      if (error instanceof UpstreamError && (error.status === 502 || error.status === 504)) flightCooldownUntil = t + 30_000;
+      if (hit && t - hit.at < FLIGHT_STALE_MS) return jsonResponse(200, { ...hit.body, stale: true }, headers);
+      return jsonResponse(502, { error: 'upstream_unavailable', message: String(error?.message || error).slice(0, 200) }, { 'Cache-Control': 'public, s-maxage=10' });
+    }
+  }
+
   function health(request) {
     const blocked = methodGuard(request);
     if (blocked) return blocked;
@@ -150,7 +188,7 @@ export function createHandlers({ env = process.env, fetchImpl = globalThis.fetch
     return jsonResponse(200, { ok: true, sources }, { 'Cache-Control': 'no-store' });
   }
 
-  return { cameras, frame, health };
+  return { cameras, frame, flights, health };
 }
 
 let shared;

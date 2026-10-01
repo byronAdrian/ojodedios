@@ -94,6 +94,7 @@
   --marker: #00808a;
   --marker-ring: #ffffff;
   --marker-selected: #e8590c;
+  --flight: #2563eb;
 }
 
 :root[data-theme='dark'] {
@@ -128,6 +129,7 @@
   --marker: #2ee6cf;
   --marker-ring: #04211e;
   --marker-selected: #ffb020;
+  --flight: #7cc4ff;
 }
 
 @media (prefers-reduced-motion: reduce) {

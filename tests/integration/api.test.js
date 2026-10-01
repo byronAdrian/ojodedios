@@ -188,3 +188,22 @@ test('frame errors explain the upstream reason for diagnosis', async () => {
   assert.equal(res.status, 502);
   assert.deepEqual(await res.json(), { error: 'frame_unavailable', message: 'Upstream HTTP 403' });
 });
+
+test('flights: quantised upstream call, per-key cache, stale on failure, 400 on junk', async () => {
+  const url = 'https://api.adsb.lol/v2/lat/40.5/lon/-3.5/dist/100';
+  let t = 0;
+  let fail = false;
+  let hits = 0;
+  const fetchImpl = fakeFetch({ [url]: () => { hits += 1; return fail ? new Response('x', { status: 429 }) : new Response(fixture('adsblol-sample.json')); } });
+  const { flights } = createHandlers({ env: {}, fetchImpl, now: () => new Date(t) });
+  const first = await (await flights(req('/api/flights?lat=40.37&lon=-3.71&dist=80'))).json();
+  assert.equal(first.aircraft.length, 2);
+  await flights(req('/api/flights?lat=40.4&lon=-3.6&dist=60'));
+  assert.equal(hits, 1, 'same quantised key served from cache');
+  fail = true;
+  t = 11_000;
+  const stale = await (await flights(req('/api/flights?lat=40.4&lon=-3.6&dist=60'))).json();
+  assert.equal(stale.stale, true);
+  assert.equal((await flights(req('/api/flights?lat=abc&lon=1&dist=1'))).status, 400);
+  assert.deepEqual([...new Set(fetchImpl.calls)], [url]);
+});

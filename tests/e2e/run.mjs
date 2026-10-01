@@ -18,6 +18,7 @@ import { parseMadridKml } from '../../server/sources/madrid.js';
 import { parseTflCatalog } from '../../server/sources/tfl.js';
 import { parseFintrafficCatalog } from '../../server/sources/fintraffic.js';
 import { createCamera } from '../../src/domain/camera.js';
+import { normalizeAdsbLol } from '../../server/sources/flights.js';
 
 const root = new URL('../../', import.meta.url);
 const fixture = (n) => readFileSync(new URL(`tests/fixtures/${n}`, root), 'utf8');
@@ -28,6 +29,7 @@ const catalogs = {
   tfl: parseTflCatalog(JSON.parse(fixture('tfl-sample.json')), ctx).map(createCamera),
   fintraffic: parseFintrafficCatalog(JSON.parse(fixture('fintraffic-sample.json')), ctx).map(createCamera),
 };
+const aircraft = normalizeAdsbLol(JSON.parse(fixture('adsblol-sample.json')));
 const JPEG = Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64');
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 
@@ -96,6 +98,8 @@ async function main() {
       if (source === failSource) return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"upstream_unavailable","message":"Upstream HTTP 503"}' });
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, sourceId: source, checkedAt: ctx.checkedAt, cameras: catalogs[source] ?? [] }) });
     });
+    await page.route('**/api/flights?*', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, aircraft }) }));
     await page.route('**/api/frame?*', (route) => {
       const id = new URL(route.request().url()).searchParams.get('id');
       if (id === failFrame) return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"frame_unavailable"}' });
@@ -309,6 +313,19 @@ async function main() {
       await close(page);
     });
   }
+
+  await step('live flights: on by default, counted on the map control, toggle persisted in the URL', async () => {
+    const page = await open('/');
+    const toggle = page.locator('.flights-toggle');
+    await page.waitForFunction(() => document.querySelector('.flights-toggle__count')?.textContent === '2', null, { timeout: 20_000 });
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+    assert.match(await toggle.getAttribute('aria-label'), /2 en vista/);
+    await toggle.click();
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+    await page.waitForURL(/fl=0/);
+    noProblems(page);
+    await close(page);
+  });
 
   await step('keyboard: skip link, focus visible on cards, Enter opens detail', async () => {
     const page = await open('/');

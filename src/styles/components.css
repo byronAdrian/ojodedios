@@ -831,3 +831,29 @@
     display: inline;
   }
 }
+
+/* Live flights toggle */
+.flights-toggle {
+  position: relative;
+}
+.flights-toggle[aria-pressed='true'] {
+  color: var(--flight);
+}
+.flights-toggle__count {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--flight);
+  color: #fff;
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  line-height: 15px;
+  text-align: center;
+}
+.detail__title .icon {
+  vertical-align: -2px;
+  color: var(--flight);
+}

@@ -11,6 +11,7 @@ reenvía la imagen del proveedor, sin almacenarla ni modificarla, con atribució
 | **Ayuntamiento de Madrid** (Informo) | Ciudad de Madrid | KML `https://datos.madrid.es/egob/catalogo/202088-0-trafico-camaras.kml` ([ficha](https://datos.madrid.es/dataset/202088-0-trafico-camaras)) | JPEG `http://informo.munimadrid.es/informo/Camaras/Camara*.jpg` → vía `/api/frame`; imagen cada ~10 min | Condiciones de datos.madrid.es (reutilización con atribución) | Esquema verificado con un KML real (fixture). Disponibilidad en vivo no verificada. |
 | **Transport for London** — JamCams | Londres | `https://api.tfl.gov.uk/Place/Type/JamCam` (sin clave; `TFL_APP_KEY` opcional sube el límite) | JPEG HTTPS en el bucket oficial de TfL (carga directa) | [TfL Open Data](https://tfl.gov.uk/info-for/open-data-users/): «Powered by TfL Open Data» | Adaptador portado de gods-eye-view. Disponibilidad en vivo no verificada. |
 | **Fintraffic / Digitraffic** — weathercams | Finlandia | `https://tie.digitraffic.fi/api/weathercam/v1/stations` (cabecera `Digitraffic-User`) | JPEG HTTPS `weathercam.digitraffic.fi` (carga directa) | [CC BY 4.0](https://www.digitraffic.fi/en/terms-of-service/) | Adaptador portado de gods-eye-view. Disponibilidad en vivo no verificada. |
+| **adsb.lol** — vuelos en directo | Aviones cerca de la vista (radio ≤ 250 NM) | `https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{nm}` vía `/api/flights` (consulta redondeada a 0,5°, caché 10 s) | — | ODbL 1.0, red comunitaria ADS-B; atribución en la ficha del avión | Formato del original gods-eye-view; disponibilidad en vivo pendiente de verificar en Vercel. |
 | **Esri Canvas** (World Light/Dark Gray Base) | Mapa base | — | Teselas `services.arcgisonline.com` (sin clave) | Atribución obligatoria «Esri, HERE, Garmin, © OpenStreetMap contributors…» (se muestra en el mapa). Revisa los [términos de Esri](https://www.esri.com/en-us/legal/terms/full-master-agreement) antes de un uso comercial intensivo; se puede cambiar con `VITE_BASEMAP_*`. | Sustituye a CARTO, que ahora responde «API KEY REQUIRED» (detectado en producción). |
 | **Natural Earth** admin-1 | Polígonos de provincias (asignación de provincia/comunidad) | Empaquetado: `server/geo/spainProvinces.data.js` | — | Dominio público | Generado de forma reproducible (`npm run data:spain`). |
 
@@ -24,6 +25,8 @@ reenvía la imagen del proveedor, sin almacenarla ni modificarla, con atribució
 - **Catálogo en caché:** el proveedor falló y se sirve la última copia válida de la instancia.
 
 ## Limitaciones conocidas
+
+- **Vuelos:** solo se muestran aviones en un radio de hasta 250 NM (unos 460 km) alrededor del centro de la vista; con la vista muy alejada (más de 1.600 km) se pide acercar el mapa. La «ruta» es la **trayectoria observada en esta sesión**. **Origen y destino no se muestran**: la base de rutas de adsbdb (David Taylor / Jim Mason) prohíbe expresamente publicarlas sin permiso. ADS-B puede ser incompleto, tener retraso o datos erróneos.
 
 - **País Vasco y Cataluña** no están en el catálogo de la DGT. Sus fuentes candidatas
   (Open Data Euskadi — API de tráfico; Servei Català de Trànsit) no se han integrado porque

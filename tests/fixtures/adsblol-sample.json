@@ -1,0 +1,10 @@
+{
+  "now": 1790864226634,
+  "ac": [
+    { "hex": "400cd8", "flight": "EZY45NK ", "r": "G-EZIY", "t": "A319", "lat": 40.12, "lon": -0.5, "alt_baro": 35000, "gs": 425.3, "track": 182.4, "seen_pos": 1.2 },
+    { "hex": "3443c5", "flight": "IBE3101", "r": "EC-MXV", "t": "A320", "lat": 40.49, "lon": -3.57, "alt_baro": "ground", "gs": 12, "track": 90, "seen_pos": 0.4 },
+    { "hex": "abcdef", "flight": "OLD1", "lat": 40, "lon": -3, "alt_baro": 1000, "seen_pos": 300 },
+    { "hex": "zzzzzz", "lat": 40, "lon": -3 },
+    { "hex": "123456", "flight": "<script>", "alt_baro": 1000 }
+  ]
+}

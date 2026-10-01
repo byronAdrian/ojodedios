@@ -17,6 +17,7 @@ Ceuta y Melilla. Modo claro, oscuro y automático; diseño *mobile-first*.
   centran el mapa y filtran en un radio de 25 km. Que una ciudad aparezca no implica que
   haya cámaras.
 - **Mundo**: añade TfL (Londres) y Fintraffic (Finlandia).
+- **Vuelos en directo** (adsb.lol): aviones en el mapa orientados según su rumbo, con ficha (indicativo, matrícula, modelo, altitud, velocidad) y trayectoria observada.
 - **Globo 3D / mapa 2D** en el mismo visor, con agrupación dinámica de marcadores según el
   zoom, centrado en España y vista global.
 - **Buscador global** (países, comunidades, provincias, ciudades, cámaras y categorías), con
