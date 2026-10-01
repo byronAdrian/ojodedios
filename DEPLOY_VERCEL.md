@@ -58,6 +58,7 @@ Configúralas en *Project → Settings → Environment Variables*, por entorno
 |---|---|---|---|
 | `VITE_CESIUM_ION_TOKEN` | **Pública** (se incrusta en el JS) | No | Solo para servicios de Cesium ion. Usa un token `assets:read` restringido por URL a tus dominios. |
 | `VITE_BASEMAP_LIGHT_URL`, `VITE_BASEMAP_DARK_URL`, `VITE_BASEMAP_ATTRIBUTION` | **Pública** | No | Mapa base alternativo (plantilla `https://…/{z}/{x}/{y}`). Añade su host a `img-src` y `connect-src` en `vercel.json`. |
+| `OPENSKY_CLIENT_ID`, `OPENSKY_CLIENT_SECRET` | Servidor | No (recomendado) | Vuelos de todo el mundo con refresco de unos 90 s en lugar de unos 15 min. Se obtienen gratis en opensky-network.org (Account → API client). |
 | `TFL_APP_KEY` | Servidor | No | Sube el límite de la API de TfL. |
 | `SOURCE_DGT_ENABLED`, `SOURCE_MADRID_ENABLED`, `SOURCE_TFL_ENABLED`, `SOURCE_FINTRAFFIC_ENABLED` | Servidor | No | `0` desactiva un proveedor sin redesplegar código. |
 | `FRAME_RATE_LIMIT_PER_MIN` | Servidor | No | Límite por cliente e instancia de `/api/frame` (por defecto 240). |

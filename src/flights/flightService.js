@@ -4,7 +4,30 @@
  * fetch/timers, so it is unit-testable without a browser.
  */
 export const POLL_MS = 15_000;
-export const MAX_VIEW_KM = 1_600; // beyond this span the feed would be a misleading sample
+export const MAX_VIEW_KM = 1_600; // beyond this span the regional feeds give way to the world snapshot
+export const MAX_RENDERED = 4_000; // keeps the globe responsive on mid-range devices
+const WORLD_MIN_POLL_MS = 60_000;
+
+/** OpenSky world tuples → aircraft objects (fields as declared by the API). */
+export function fromWorldTuples(rows) {
+  return rows.map(([hex, callsign, lat, lon, altitudeM, onGround, speedKmh, track]) => ({
+    hex, callsign, registration: null, type: null, lat, lon, altitudeM, onGround, speedKmh, track, seenS: null,
+  }));
+}
+
+/** Aircraft inside [w,s,e,n] (antimeridian-aware), capped by even sampling. */
+export function inBounds(aircraft, bounds, cap = MAX_RENDERED) {
+  const visible = bounds
+    ? aircraft.filter((a) => {
+        const [w, s, e, n] = bounds;
+        if (a.lat < s || a.lat > n) return false;
+        return w <= e ? a.lon >= w && a.lon <= e : a.lon >= w || a.lon <= e;
+      })
+    : aircraft;
+  if (visible.length <= cap) return visible;
+  const step = visible.length / cap;
+  return Array.from({ length: cap }, (_, i) => visible[Math.floor(i * step)]);
+}
 const MAX_TRAIL_POINTS = 120;
 const TRAIL_TTL_MS = 5 * 60_000;
 const NM_PER_KM = 1 / 1.852;
@@ -17,7 +40,9 @@ export const radiusForSpan = (km) => Math.min(250, Math.max(25, Math.ceil((km / 
  *   onUpdate: (state: { status: 'idle'|'loading'|'ready'|'zoom'|'error'|'disabled', aircraft: object[], message?: string }) => void,
  *   now?: () => number, setTimer?: typeof setTimeout, clearTimer?: typeof clearTimeout }} deps
  */
-export function createFlightService({ fetchImpl = (...a) => globalThis.fetch(...a), getView, onUpdate, now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout }) {
+export function createFlightService({ fetchImpl = (...a) => globalThis.fetch(...a), getView, getBounds = () => null, onUpdate, now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout }) {
+  let world = null; // { at, refreshMs, aircraft, attribution, stale }
+  let nextDelay = POLL_MS;
   /** @type {Map<string, { points: Array<[number, number, number]>, lastSeen: number }>} */
   const trails = new Map();
   let timer = 0;
@@ -49,11 +74,10 @@ export function createFlightService({ fetchImpl = (...a) => globalThis.fetch(...
       return;
     }
     if (view.km > MAX_VIEW_KM) {
-      aircraft = [];
-      onUpdate({ status: 'zoom', aircraft });
-      schedule();
+      await pollWorld();
       return;
     }
+    nextDelay = POLL_MS;
     controller?.abort();
     controller = new AbortController();
     const params = new URLSearchParams({ lat: view.lat.toFixed(3), lon: view.lon.toFixed(3), dist: String(radiusForSpan(view.km)) });
@@ -79,8 +103,49 @@ export function createFlightService({ fetchImpl = (...a) => globalThis.fetch(...
     schedule();
   }
 
+  /** Wide views: shared worldwide snapshot, re-fetched no faster than its refresh period. */
+  async function pollWorld() {
+    const t = now();
+    if (!world || t - world.at >= world.refreshMs) {
+      controller?.abort();
+      controller = new AbortController();
+      try {
+        const response = await fetchImpl('/api/flights?scope=world', { signal: controller.signal });
+        const body = await response.json().catch(() => null);
+        if (!running) return;
+        if (response.ok && Array.isArray(body?.aircraft)) {
+          world = {
+            at: t,
+            refreshMs: Math.max(WORLD_MIN_POLL_MS, (Number(body.refreshSeconds) || 60) * 1000),
+            aircraft: fromWorldTuples(body.aircraft),
+            attribution: body.attribution || null,
+            stale: Boolean(body.stale),
+          };
+        } else if (body?.enabled === false) {
+          onUpdate({ status: 'disabled', aircraft: [] });
+          return;
+        } else {
+          onUpdate({ status: 'error', aircraft, message: body?.message || `HTTP ${response.status}` });
+          nextDelay = WORLD_MIN_POLL_MS;
+          schedule();
+          return;
+        }
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+        onUpdate({ status: 'error', aircraft, message: 'Sin conexión' });
+        nextDelay = WORLD_MIN_POLL_MS;
+        schedule();
+        return;
+      }
+    }
+    aircraft = inBounds(world.aircraft, getBounds());
+    onUpdate({ status: 'ready', scope: 'world', aircraft, total: world.aircraft.length, stale: world.stale, attribution: world.attribution, refreshSeconds: world.refreshMs / 1000 });
+    nextDelay = Math.max(5_000, world.refreshMs - (now() - world.at));
+    schedule();
+  }
+
   function schedule() {
-    if (running && !timer) timer = setTimer(poll, POLL_MS);
+    if (running && !timer) timer = setTimer(poll, nextDelay);
   }
 
   return {

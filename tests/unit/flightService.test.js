@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createFlightService, radiusForSpan, MAX_VIEW_KM } from '../../src/flights/flightService.js';
+import { createFlightService, radiusForSpan, MAX_VIEW_KM, inBounds } from '../../src/flights/flightService.js';
 
 const plane = (hex, lon, lat) => ({ hex, lon, lat, altitudeM: 10000, onGround: false, callsign: 'X', track: 90, seenS: 1 });
 
@@ -51,12 +51,33 @@ test('polls the view, builds per-aircraft trails, and keeps polling', async () =
   assert.equal(h.svc.find('aaaaaa').lon, -2.9);
 });
 
-test('too wide a view reports "zoom" instead of fetching a misleading sample', async () => {
-  const h = harness({ view: { lat: 40, lon: -3, km: MAX_VIEW_KM + 1 } });
-  h.svc.start();
+test('wide views use the shared world snapshot, filtered to the view', async () => {
+  const updates = [];
+  const calls = [];
+  const svc = createFlightService({
+    getView: () => ({ lat: 40, lon: 0, km: MAX_VIEW_KM + 1 }),
+    getBounds: () => [-10, 35, 5, 45],
+    onUpdate: (s) => updates.push(s),
+    fetchImpl: async (url) => {
+      calls.push(url);
+      return { ok: true, status: 200, json: async () => ({ refreshSeconds: 90, attribution: 'OpenSky', aircraft: [['aaaaaa', 'IN', 40, -3, 1000, false, 800, 90], ['bbbbbb', 'OUT', 10, 100, 1000, false, 800, 90]] }) };
+    },
+    setTimer: () => 1,
+    clearTimer: () => {},
+  });
+  svc.start();
   await settle();
-  assert.equal(h.calls.length, 0);
-  assert.equal(h.updates.at(-1).status, 'zoom');
+  assert.deepEqual(calls, ['/api/flights?scope=world']);
+  const last = updates.at(-1);
+  assert.equal(last.scope, 'world');
+  assert.deepEqual(last.aircraft.map((a) => a.hex), ['aaaaaa']);
+  assert.equal(last.total, 2);
+});
+
+test('inBounds handles the antimeridian and caps by even sampling', () => {
+  const list = Array.from({ length: 10 }, (_, i) => ({ hex: String(i), lat: 0, lon: 170 + i * 2 > 180 ? 170 + i * 2 - 360 : 170 + i * 2 }));
+  assert.equal(inBounds(list, [175, -1, -175, 1]).length, 5);
+  assert.equal(inBounds(list, null, 4).length, 4);
 });
 
 test('errors keep the last aircraft and are reported; stop clears state', async () => {

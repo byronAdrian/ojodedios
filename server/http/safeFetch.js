@@ -36,7 +36,8 @@ export function isAllowedUrl(url, allowedHosts) {
 /**
  * @param {string} url
  * @param {{ allowedHosts: string[], headers?: Record<string,string>, timeoutMs?: number,
- *           maxBytes?: number, fetchImpl?: typeof fetch, signal?: AbortSignal }} options
+ *           maxBytes?: number, fetchImpl?: typeof fetch, signal?: AbortSignal,
+ *           method?: string, body?: string }} options
  * @returns {Promise<{ body: Uint8Array, contentType: string, status: number, headers: Headers }>}
  */
 export async function safeFetch(url, options) {
@@ -47,6 +48,8 @@ export async function safeFetch(url, options) {
     maxBytes = DEFAULT_MAX_BYTES,
     fetchImpl = globalThis.fetch,
     signal,
+    method = 'GET',
+    body: requestBody,
   } = options;
   if (!isAllowedUrl(url, allowedHosts)) {
     throw new UpstreamError(`Host not allowed: ${url}`, { status: 500 });
@@ -64,6 +67,8 @@ export async function safeFetch(url, options) {
         },
         redirect: 'manual',
         signal: combined,
+        method,
+        ...(requestBody === undefined ? {} : { body: requestBody }),
       });
     } catch (cause) {
       const timedOut = timeout.aborted;

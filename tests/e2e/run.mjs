@@ -98,6 +98,8 @@ async function main() {
       if (source === failSource) return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"upstream_unavailable","message":"Upstream HTTP 503"}' });
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, sourceId: source, checkedAt: ctx.checkedAt, cameras: catalogs[source] ?? [] }) });
     });
+    await page.route('**/api/flight-trace?*', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ hex: '400cd8', source: 'adsb.lol', points: [[-0.45, 51.47, 0], [-1.5, 47, 11000], [-0.6, 41, 10668], [-0.5, 40.12, 10668]] }) }));
     await page.route('**/api/flights?*', (route) =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true, aircraft }) }));
     await page.route('**/api/frame?*', (route) => {

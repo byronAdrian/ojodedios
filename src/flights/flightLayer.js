@@ -46,6 +46,8 @@ export function createFlightLayer(globe, { onSelect }) {
   const entities = new Map();
   let selected = null;
   let icons;
+  let wakeColor = Color.WHITE.withAlpha(0.35);
+  const WAKE_POINTS = 12;
   const trail = source.entities.add({
     id: 'flight-trail',
     show: false,
@@ -59,6 +61,7 @@ export function createFlightLayer(globe, { onSelect }) {
       ground: planeIcon(cssVar('--text-3', '#6b7280'), cssVar('--marker-ring', '#ffffff')),
     };
     trail.polyline.material = Color.fromCssColorString(cssVar('--marker-selected', '#e8590c')).withAlpha(0.9);
+    wakeColor = Color.fromCssColorString(cssVar('--flight', '#2563eb')).withAlpha(0.45);
   }
   paletteIcons();
 
@@ -71,8 +74,11 @@ export function createFlightLayer(globe, { onSelect }) {
   });
 
   return {
-    /** @param {object[]} aircraft */
-    setAircraft(aircraft) {
+    /**
+     * @param {object[]} aircraft
+     * @param {(hex: string) => Array<[number, number, number]>} [trailOf] short wake per aircraft
+     */
+    setAircraft(aircraft, trailOf = () => []) {
       const seen = new Set();
       source.entities.suspendEvents();
       try {
@@ -106,6 +112,7 @@ export function createFlightLayer(globe, { onSelect }) {
             });
             entity.flightHex = a.hex;
             entity.onGround = a.onGround;
+            entity.polyline = { positions: [], width: 1.5, material: wakeColor };
             entities.set(a.hex, entity);
           } else {
             entity.onGround = a.onGround;
@@ -113,6 +120,8 @@ export function createFlightLayer(globe, { onSelect }) {
             entity.billboard.rotation = rotation;
             entity.billboard.image = iconFor(a);
           }
+          const wake = a.hex === selected ? [] : trailOf(a.hex).slice(-WAKE_POINTS);
+          entity.polyline.positions = wake.length > 1 ? Cartesian3.fromDegreesArrayHeights(wake.flat()) : [];
         }
         for (const [hex, entity] of entities) {
           if (seen.has(hex)) continue;
@@ -133,6 +142,7 @@ export function createFlightLayer(globe, { onSelect }) {
         const entity = key ? entities.get(key) : null;
         if (!entity) continue;
         entity.label.show = key === hex;
+        if (key === hex) entity.polyline.positions = []; // the full route replaces the short wake
         entity.billboard.image = key === hex ? icons.selected : entity.onGround ? icons.ground : icons.normal;
       }
       trail.show = Boolean(hex) && points.length > 1;

@@ -8,7 +8,7 @@ export function createFlightDetail({ container, onClose, onCenter }) {
   let currentHex = null;
 
   /** @param {object | null} a @param {{ trailPoints?: number, status?: string }} [ctx] */
-  function show(a, { trailPoints = 0, lost = false, attribution = null } = {}) {
+  function show(a, { trailPoints = 0, lost = false, attribution = null, trace = null } = {}) {
     if (!a) {
       currentHex = null;
       container.hidden = true;
@@ -39,7 +39,12 @@ export function createFlightDetail({ container, onClose, onCenter }) {
           h('dt', null, 'Velocidad'), h('dd', null, a.speedKmh === null ? '—' : `${formatNumber(a.speedKmh)} km/h`),
           h('dt', null, 'Rumbo'), h('dd', null, a.track === null ? '—' : `${Math.round(a.track)}° ${compass(a.track)}`),
           h('dt', null, 'Código ICAO'), h('dd', null, a.hex.toUpperCase()),
-          h('dt', null, 'Ruta'), h('dd', null, trailPoints > 1 ? `Trayectoria observada en esta sesión (${trailPoints} posiciones)` : 'Se dibujará a medida que lleguen posiciones')),
+          h('dt', null, 'Ruta'), h('dd', null,
+            trace?.points?.length
+              ? `Trayectoria real del día (${trailPoints} puntos, ${trace.source})`
+              : trace?.error
+                ? `Trayectoria completa no disponible; se dibuja lo observado en esta sesión (${trailPoints} puntos)`
+                : trace ? 'Sin trayectoria registrada hoy' : 'Cargando trayectoria…')),
         h('div', { class: 'actions' },
           h('button', { type: 'button', class: 'btn btn--primary btn--sm', onClick: () => onCenter(a) }, icon('target', 'icon icon--sm'), 'Centrar en el mapa')),
         h('p', { class: 'attribution' }, `Datos ADS-B de ${attribution || 'redes comunitarias'}. Pueden estar incompletos o retrasados; no aptos para navegación. Origen y destino no se muestran: las bases de rutas disponibles no permiten su publicación.`)),

@@ -10,7 +10,43 @@ import { createFlightDetail } from './flightDetail.js';
  * @param {{ container: HTMLElement, getMap: () => any, createLayer: (globe, opts) => any,
  *   onSelectionChange: (hasFlight: boolean) => void, onStatus: (s: object) => void }} deps
  */
-export function createFlightsController({ container, getMap, createLayer, onSelectionChange, onStatus }) {
+export function createFlightsController({ container, getMap, createLayer, onSelectionChange, onStatus, fetchImpl = (...a) => globalThis.fetch(...a) }) {
+  /** hex → { points, source } from /api/flight-trace (the day's real flown track). */
+  const traces = new Map();
+  let traceRequest = null;
+
+  /** Real track first, then positions observed after its last point. */
+  function routeOf(hex) {
+    const full = traces.get(hex)?.points ?? [];
+    const session = service.trail(hex);
+    if (!full.length) return session;
+    const last = full.at(-1);
+    const tailFrom = session.findIndex(([lon, lat]) => lon === last[0] && lat === last[1]);
+    return full.concat(tailFrom >= 0 ? session.slice(tailFrom + 1) : session.slice(-1));
+  }
+
+  async function loadTrace(hex) {
+    traceRequest?.abort();
+    traceRequest = new AbortController();
+    try {
+      const response = await fetchImpl(`/api/flight-trace?hex=${encodeURIComponent(hex)}`, { signal: traceRequest.signal });
+      const body = await response.json().catch(() => null);
+      if (response.ok && Array.isArray(body?.points)) traces.set(hex, { points: body.points, source: body.source });
+      else traces.set(hex, { points: [], error: body?.message || `HTTP ${response.status}` });
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      traces.set(hex, { points: [], error: 'Sin conexión' });
+    }
+    if (selectedHex === hex) refreshSelected();
+  }
+
+  function refreshSelected() {
+    const a = service.find(selectedHex) ?? lastShown;
+    const route = routeOf(selectedHex);
+    layer?.setSelected(selectedHex, route);
+    if (a) detail.show(a, { trailPoints: route.length, attribution, trace: traces.get(selectedHex), lost: !service.find(selectedHex) });
+  }
+
   let layer = null;
   let selectedHex = null;
   let lastAircraft = [];
@@ -25,19 +61,16 @@ export function createFlightsController({ container, getMap, createLayer, onSele
 
   const service = createFlightService({
     getView: () => getMap()?.globe.getViewTarget() ?? null,
+    getBounds: () => getMap()?.globe.getViewBounds() ?? null,
     onUpdate(state) {
       lastAircraft = state.aircraft;
       if (state.attribution) attribution = state.attribution;
-      layer?.setAircraft(state.aircraft);
+      // World view: no wakes (thousands of polylines would cost more than they say).
+      layer?.setAircraft(state.aircraft, state.scope === 'world' ? () => [] : (hex) => service.trail(hex));
       if (selectedHex) {
         const a = service.find(selectedHex);
-        const trail = service.trail(selectedHex);
-        layer?.setSelected(selectedHex, trail);
-        if (a) {
-          lastShown = a;
-          detail.show(a, { trailPoints: trail.length, attribution });
-        }
-        else if (state.status === 'ready') detail.show(lastShown, { trailPoints: trail.length, lost: true, attribution });
+        if (a) lastShown = a;
+        refreshSelected();
       }
       onStatus({ ...state, count: state.aircraft.length });
     },
@@ -47,9 +80,11 @@ export function createFlightsController({ container, getMap, createLayer, onSele
     selectedHex = hex;
     const a = hex ? service.find(hex) : null;
     lastShown = a;
-    layer?.setSelected(hex, hex ? service.trail(hex) : []);
-    detail.show(a, { trailPoints: hex ? service.trail(hex).length : 0, attribution });
+    layer?.setSelected(hex, hex ? routeOf(hex) : []);
+    detail.show(a, { trailPoints: hex ? routeOf(hex).length : 0, attribution, trace: hex ? traces.get(hex) : null });
     onSelectionChange(Boolean(a));
+    if (hex && a && !traces.has(hex)) loadTrace(hex);
+    if (!hex) traceRequest?.abort();
   }
 
   return {

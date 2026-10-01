@@ -235,3 +235,47 @@ test('flights: when every network fails the error lists each reason', async () =
   assert.equal(res.status, 502);
   assert.match((await res.json()).message, /adsb\.lol: Upstream HTTP 404 · airplanes\.live: .* · adsb\.fi: /);
 });
+
+test('flight trace: falls through networks without a track (404) and validates the hex', async () => {
+  const lol = 'https://globe.adsb.lol/data/traces/d8/trace_full_400cd8.json';
+  const live = 'https://globe.airplanes.live/data/traces/d8/trace_full_400cd8.json';
+  const fetchImpl = fakeFetch({ [live]: () => new Response(JSON.stringify({ timestamp: 1, trace: [[0, 40, -3, 1000], [10, 40.1, -3.1, 2000]] })) });
+  const { flightTrace } = createHandlers({ env: {}, fetchImpl });
+  const body = await (await flightTrace(req('/api/flight-trace?hex=400CD8'))).json();
+  assert.equal(body.source, 'airplanes.live');
+  assert.equal(body.points.length, 2);
+  assert.deepEqual(fetchImpl.calls, [lol, live]);
+  assert.equal((await flightTrace(req('/api/flight-trace?hex=../../x'))).status, 400);
+});
+
+test('world flights: one shared OpenSky snapshot, OAuth when configured, cached by TTL', async () => {
+  const token = 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token';
+  const states = 'https://opensky-network.org/api/states/all';
+  const seen = [];
+  const fetchImpl = async (url, init) => {
+    seen.push([url, init.method, init.headers.Authorization ?? null]);
+    if (url === token) return new Response(JSON.stringify({ access_token: 'T', expires_in: 1800 }));
+    if (url === states) return new Response(JSON.stringify({ time: 10, states: [['400cd8', 'EZY', 'UK', 9, 10, -0.5, 40, 1000, false, 200, 90]] }), { headers: { 'x-rate-limit-remaining': '3900' } });
+    return new Response('no', { status: 404 });
+  };
+  let t = 0;
+  const { flights } = createHandlers({ env: { OPENSKY_CLIENT_ID: 'id', OPENSKY_CLIENT_SECRET: 's' }, fetchImpl, now: () => new Date(t) });
+  const res = await flights(req('/api/flights?scope=world'));
+  const body = await res.json();
+  assert.equal(body.source, 'opensky');
+  assert.equal(body.authenticated, true);
+  assert.equal(body.refreshSeconds, 90);
+  assert.deepEqual(body.aircraft, [['400cd8', 'EZY', 40, -0.5, 1000, false, 720, 90]]);
+  assert.match(res.headers.get('cache-control'), /s-maxage=90/);
+  t = 60_000;
+  await flights(req('/api/flights?scope=world'));
+  assert.deepEqual(seen.map(([u, m, a]) => [u, m, a]), [[token, 'POST', null], [states, 'GET', 'Bearer T']]);
+});
+
+test('world flights: anonymous failure reports OpenSky and backs off', async () => {
+  const { flights } = createHandlers({ env: {}, fetchImpl: fakeFetch({}) });
+  const res = await flights(req('/api/flights?scope=world'));
+  assert.equal(res.status, 502);
+  assert.match((await res.json()).message, /^OpenSky: Upstream HTTP 404/);
+  assert.equal((await flights(req('/api/flights?scope=world'))).status, 503);
+});

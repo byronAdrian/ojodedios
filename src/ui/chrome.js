@@ -22,7 +22,7 @@ export function createMapControls({ container, actions }) {
   return {
     /** @param {boolean} on @param {{ status?: string, count?: number }} [info] */
     setFlights(on, { status, count = 0 } = {}) {
-      const detail = !on ? 'desactivados' : status === 'zoom' ? 'acerca el mapa para verlos' : status === 'error' ? 'fuente no disponible' : `${count} en vista`;
+      const detail = !on ? 'desactivados' : status === 'error' ? 'fuente no disponible' : `${count} en vista`;
       const label = `Vuelos en directo: ${detail}`;
       flightsButton.setAttribute('aria-pressed', String(on));
       flightsButton.setAttribute('aria-label', label);

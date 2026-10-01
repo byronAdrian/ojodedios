@@ -90,3 +90,42 @@ export function normalizeAdsbLol(payload) {
   }
   return out;
 }
+
+/**
+ * Full-day flown track from the tar1090 "globe" data that each network's own
+ * map loads: /data/traces/{last 2 hex chars}/trace_full_{hex}.json
+ * Format (tar1090): { icao, timestamp (s), trace: [[dt_s, lat, lon, alt_ft | "ground", gs, track, ...], ...] }
+ * Not verifiable from the dev environment; unknown shapes fail with a diagnostic.
+ */
+export const TRACE_PROVIDERS = Object.freeze([
+  { id: 'adsb.lol', host: 'globe.adsb.lol' },
+  { id: 'airplanes.live', host: 'globe.airplanes.live' },
+  { id: 'adsb.fi', host: 'globe.adsb.fi' },
+]);
+const MAX_TRACE_POINTS = 600;
+
+export function validHex(hex) {
+  const value = String(hex ?? '').trim().toLowerCase();
+  return /^~?[0-9a-f]{6}$/.test(value) ? value : null;
+}
+
+export const traceUrl = (host, hex) => `https://${host}/data/traces/${hex.slice(-2)}/trace_full_${hex}.json`;
+
+/** → { startedAt, points: [[lon, lat, altM]] } downsampled to MAX_TRACE_POINTS. */
+export function parseTrace(payload) {
+  const base = num(payload?.timestamp);
+  const rows = Array.isArray(payload?.trace) ? payload.trace : null;
+  if (base === null || !rows) throw new Error(`Formato de trayectoria no reconocido (claves: ${Object.keys(payload ?? {}).slice(0, 8).join(',')})`);
+  const points = [];
+  for (const row of rows) {
+    if (!Array.isArray(row)) continue;
+    const lat = num(row[1]);
+    const lon = num(row[2]);
+    if (lat === null || lon === null || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
+    const altFt = row[3] === 'ground' ? 0 : num(row[3]) ?? 0;
+    points.push([Math.round(lon * 1e5) / 1e5, Math.round(lat * 1e5) / 1e5, Math.max(0, Math.round(altFt * FOOT_TO_M))]);
+  }
+  const step = Math.max(1, Math.ceil(points.length / MAX_TRACE_POINTS));
+  const sampled = points.filter((_, i) => i % step === 0 || i === points.length - 1);
+  return { startedAt: new Date(base * 1000).toISOString(), points: sampled };
+}
