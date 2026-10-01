@@ -66,7 +66,7 @@ export function createFlightsController({ container, getMap, createLayer, onSele
       lastAircraft = state.aircraft;
       if (state.attribution) attribution = state.attribution;
       // World view: no wakes (thousands of polylines would cost more than they say).
-      layer?.setAircraft(state.aircraft, state.scope === 'world' ? () => [] : (hex) => service.trail(hex));
+      layer?.setAircraft(state.aircraft, state.scope ? () => [] : (hex) => service.trail(hex));
       if (selectedHex) {
         const a = service.find(selectedHex);
         if (a) lastShown = a;

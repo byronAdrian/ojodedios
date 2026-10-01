@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createFlightService, radiusForSpan, MAX_VIEW_KM, inBounds } from '../../src/flights/flightService.js';
+import { createFlightService, radiusForSpan, MAX_VIEW_KM, inBounds, tilesFor, MAX_TILES } from '../../src/flights/flightService.js';
 
 const plane = (hex, lon, lat) => ({ hex, lon, lat, altitudeM: 10000, onGround: false, callsign: 'X', track: 90, seenS: 1 });
 
@@ -102,4 +102,41 @@ test('a disabled feed stops polling', async () => {
   assert.equal(h.updates.at(-1).status, 'disabled');
   await h.tick();
   assert.equal(h.calls.length, 1);
+});
+
+test('tilesFor: fixed grid, nearest-first, capped, antimeridian-safe', () => {
+  const europe = tilesFor([-12, 34, 30, 60], { lat: 46, lon: 8 });
+  assert.equal(europe.length, MAX_TILES);
+  assert.deepEqual(europe[0], { lat: 48, lon: 9 }); // at 48° the lon step is 6/cos(48°) ≈ 9°
+  for (const t of europe) {
+    assert.equal(t.lat % 6, 0);
+    assert.equal((t.lon * 2) % 1, 0, 'lon on the 0.5° grid the server quantises to');
+  }
+  const pacific = tilesFor([170, -6, -170, 6], { lat: 0, lon: 180 }, 50);
+  assert.ok(pacific.every((t) => t.lon >= 168 || t.lon <= -168), JSON.stringify(pacific));
+});
+
+test('world snapshot failure falls back to regional tiles, merged by hex', async () => {
+  const updates = [];
+  const calls = [];
+  const svc = createFlightService({
+    getView: () => ({ lat: 46, lon: 8, km: MAX_VIEW_KM + 500 }),
+    getBounds: () => [-2, 40, 18, 52],
+    onUpdate: (s) => updates.push(s),
+    fetchImpl: async (url) => {
+      calls.push(url);
+      if (url.includes('scope=world')) return { ok: false, status: 502, json: async () => ({ message: 'OpenSky: Upstream unreachable' }) };
+      return { ok: true, status: 200, json: async () => ({ attribution: 'airplanes.live', aircraft: [plane('aaaaaa', 8, 46), plane('bbbbbb', 9, 47)] }) };
+    },
+    setTimer: () => 1,
+    clearTimer: () => {},
+    sleep: async () => {},
+  });
+  svc.start();
+  for (let i = 0; i < 30; i += 1) await settle();
+  assert.equal(calls[0], '/api/flights?scope=world');
+  assert.ok(calls.length > 2 && calls.slice(1).every((u) => /dist=250$/.test(u)), calls.join('\n'));
+  const last = updates.at(-1);
+  assert.equal(last.scope, 'tiles');
+  assert.deepEqual(last.aircraft.map((a) => a.hex).sort(), ['aaaaaa', 'bbbbbb']);
 });
