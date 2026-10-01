@@ -1066,7 +1066,7 @@
 }
 .layers-panel__swatch--cameras { background: var(--marker); }
 .layers-panel__swatch--flights { background: var(--flight); }
-.layers-panel__swatch--quakes { background: var(--quake); }
+.layers-panel__swatch--quakes { background: transparent; border: 2px solid var(--quake); }
 .layers-panel__swatch--fires { background: var(--fire); }
 .layers-panel__text {
   display: flex;

@@ -118,7 +118,6 @@ export function createCameraLayer(globe, { onSelect }) {
     cluster.billboard.id = clustered; // picked.id → array of member entities (see pick handler)
     cluster.billboard.verticalOrigin = VerticalOrigin.CENTER;
     cluster.billboard.image = icons.cluster(clustered.length, palette.marker, palette.ring, palette.clusterText);
-    cluster.billboard.disableDepthTestDistance = Number.POSITIVE_INFINITY;
   });
   viewer.dataSources.add(source);
 
@@ -166,7 +165,6 @@ export function createCameraLayer(globe, { onSelect }) {
               verticalOrigin: VerticalOrigin.CENTER,
               heightReference: HeightReference.NONE,
               scaleByDistance: new NearFarScalar(2e5, 1, 8e6, 0.7),
-              disableDepthTestDistance: Number.POSITIVE_INFINITY,
             },
           });
           entity.cameraId = camera.id;

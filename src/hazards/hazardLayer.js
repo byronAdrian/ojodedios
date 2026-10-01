@@ -22,8 +22,8 @@ export function createHazardLayer(globe, { onSelect }) {
 
   function readPalette() {
     return {
-      quake: Color.fromCssColorString(cssVar('--quake', '#ffd84d')),
-      strong: Color.fromCssColorString(cssVar('--quake-strong', '#ff6b6b')),
+      quake: Color.fromCssColorString(cssVar('--quake', '#c084fc')),
+      strong: Color.fromCssColorString(cssVar('--quake-strong', '#ff4d8d')),
       fire: Color.fromCssColorString(cssVar('--fire', '#ff7a1a')),
       ring: Color.fromCssColorString(cssVar('--marker-ring', '#000000')),
       selected: Color.fromCssColorString(cssVar('--marker-selected', '#ffffff')),
@@ -35,15 +35,15 @@ export function createHazardLayer(globe, { onSelect }) {
   function drawQuakes(events) {
     quakes.removeAll();
     for (const event of events) {
-      const strong = quakeLevel(event.mag) === 'strong';
+      const tone = quakeLevel(event.mag) === 'strong' ? palette.strong : palette.quake;
+      // Seismic ring (faint fill, coloured outline): never mistaken for a fire dot or a camera.
       quakes.add({
         position: Cartesian3.fromDegrees(event.lon, event.lat),
         pixelSize: quakeSize(event.mag),
-        color: (strong ? palette.strong : palette.quake).withAlpha(0.85),
-        outlineColor: event === selected ? palette.selected : palette.ring,
-        outlineWidth: event === selected ? 3 : 1.5,
+        color: tone.withAlpha(0.28),
+        outlineColor: event === selected ? palette.selected : tone,
+        outlineWidth: event === selected ? 3.5 : 2.5,
         scaleByDistance: scale,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
         id: { hazard: 'quake', data: event },
       });
     }
@@ -59,7 +59,6 @@ export function createHazardLayer(globe, { onSelect }) {
         outlineColor: point === selected ? palette.selected : palette.ring,
         outlineWidth: point === selected ? 2.5 : 0.8,
         scaleByDistance: scale,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
         id: { hazard: 'fire', data: point },
       });
     }

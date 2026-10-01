@@ -98,8 +98,8 @@
   --marker-ring: #ffffff;
   --marker-selected: #d97706;
   --flight: #0e7490;
-  --quake: #b45309;
-  --quake-strong: #b42318;
+  --quake: #7c3aed;
+  --quake-strong: #be185d;
   --fire: #c2410c;
   /* Decorative layer (src/styles/matrix.css) */
   --glow: none;
@@ -141,8 +141,8 @@
   --marker-ring: #00140a;
   --marker-selected: #ffd84d;
   --flight: #7df9ff;
-  --quake: #ffd84d;
-  --quake-strong: #ff6b6b;
+  --quake: #c084fc;
+  --quake-strong: #ff4d8d;
   --fire: #ff7a1a;
   --glow: 0 0 14px rgba(0, 255, 102, 0.28);
   --glow-text: 0 0 8px rgba(0, 255, 102, 0.55);

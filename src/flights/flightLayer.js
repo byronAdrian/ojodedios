@@ -96,7 +96,6 @@ export function createFlightLayer(globe, { onSelect }) {
                 rotation,
                 verticalOrigin: VerticalOrigin.CENTER,
                 scaleByDistance: new NearFarScalar(1e5, 1.1, 6e6, 0.55),
-                disableDepthTestDistance: Number.POSITIVE_INFINITY,
               },
               label: {
                 text: a.callsign || a.registration || a.hex.toUpperCase(),
@@ -107,7 +106,6 @@ export function createFlightLayer(globe, { onSelect }) {
                 outlineColor: Color.BLACK.withAlpha(0.7),
                 fillColor: Color.WHITE,
                 pixelOffset: new Cartesian2(0, -24),
-                disableDepthTestDistance: Number.POSITIVE_INFINITY,
               },
             });
             entity.flightHex = a.hex;
