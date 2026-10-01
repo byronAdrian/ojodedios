@@ -34,6 +34,7 @@ export const EUSKADI_IMAGE_DOMAINS = Object.freeze([
   'euskadi.eus',
   'euskadi.net',
   'trafikoa.eus',
+  'trafikoa.net', // Dirección de Tráfico del Gobierno Vasco (legacy domain, seen in the live catalog)
   'bilbao.eus',
   'bilbao.net',
   'vitoria-gasteiz.org',
@@ -99,6 +100,7 @@ export function parseEuskadiPages(pages, { checkedAt }) {
   if (!records.length) throw new Error('API de tráfico de Euskadi: respuesta sin cámaras');
   const rows = [];
   const rejectedHosts = new Map();
+  const rejectedSamples = new Map(); // first refused URL per host, so a format change can be diagnosed
   let withoutImage = 0;
   let badLocation = 0;
   for (const record of records) {
@@ -114,6 +116,7 @@ export function parseEuskadiPages(pages, { checkedAt }) {
         host = new URL(rawImage).hostname || host;
       } catch {}
       rejectedHosts.set(host, (rejectedHosts.get(host) ?? 0) + 1);
+      if (!rejectedSamples.has(host)) rejectedSamples.set(host, rawImage.slice(0, 200));
       continue;
     }
     const point = euskadiCoordinates(record?.latitude, record?.longitude);
@@ -148,6 +151,7 @@ export function parseEuskadiPages(pages, { checkedAt }) {
     withoutImage,
     badLocation,
     rejectedImageHosts: Object.fromEntries([...rejectedHosts].sort((x, y) => y[1] - x[1]).slice(0, 10)),
+    rejectedImageSamples: Object.fromEntries([...rejectedSamples].slice(0, 10)),
   };
   if (!rows.length) {
     throw new Error(`API de tráfico de Euskadi: ninguna cámara utilizable (${JSON.stringify(notes).slice(0, 220)})`);

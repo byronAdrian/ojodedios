@@ -63,6 +63,8 @@ test('real API page: keeps only cameras with an official image, in Bizkaia, prox
 test('image URLs must be on official Basque administration domains', () => {
   assert.equal(euskadiImageKey('http://www.bizkaimove.com/camaras/cam1.jpg'), 'www.bizkaimove.com/camaras/cam1.jpg');
   assert.equal(euskadiImageKey('https://camaras.bilbao.eus/img/c1.JPG'), 'camaras.bilbao.eus/img/c1.JPG');
+  assert.equal(euskadiImageKey('http://www.trafikoa.net/camaras/1.jpg'), 'www.trafikoa.net/camaras/1.jpg');
+  assert.equal(euskadiImageKey('http://www.trafikoa.net.evil.com/1.jpg'), null);
   for (const bad of [
     'http://evil.com/cam.jpg',
     'http://bizkaimove.com.evil.com/cam.jpg',
@@ -101,6 +103,7 @@ test('unknown image hosts are reported, and an unusable catalog fails loudly', (
   const mixed = parseEuskadiPages([{ cameras: [...page.cameras, sample.cameras.find((c) => c.urlImage)] }], ctx);
   assert.equal(mixed.rows.length, 1);
   assert.deepEqual(mixed.notes.rejectedImageHosts, { 'cams.example.org': 1 });
+  assert.deepEqual(mixed.notes.rejectedImageSamples, { 'cams.example.org': 'http://cams.example.org/1.jpg' });
   assert.equal(mixed.notes.badLocation, 1);
 });
 
