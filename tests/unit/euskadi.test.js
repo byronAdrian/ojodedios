@@ -81,10 +81,34 @@ test('image URLs must be on official Basque administration domains', () => {
   }
 });
 
+test('formats seen live: Vitoria endpoint, cache-buster query, encoded space', () => {
+  const vitoria = 'https://www.vitoria-gasteiz.org/c11-01w/cameras?action=get&id=CAM30';
+  const key = euskadiImageKey(vitoria);
+  assert.equal(key, 'www.vitoria-gasteiz.org/c11-01w/cameras?action=get&id=CAM30');
+  assert.equal(euskadiFrameUrl(euskadiNativeId(key)), vitoria);
+  for (const bad of [
+    'https://www.vitoria-gasteiz.org/c11-01w/cameras?action=delete&id=CAM30',
+    'https://www.vitoria-gasteiz.org/c11-01w/cameras?action=get&id=CAM30&x=1',
+    'https://www.vitoria-gasteiz.org/c11-01w/other?action=get&id=CAM30',
+    'https://evil.com/c11-01w/cameras?action=get&id=CAM30',
+  ]) assert.equal(euskadiImageKey(bad), null, bad);
+
+  assert.equal(euskadiImageKey('http://www.bizkaimove.com/camaras/cam96.jpg?t=8760216'), 'www.bizkaimove.com/camaras/cam96.jpg');
+  assert.equal(euskadiImageKey('http://www.bizkaimove.com/camaras/cam96.jpg?t=abc'), null);
+  assert.equal(euskadiImageKey('http://www.bizkaimove.com/camaras/cam96.jpg?u=1'), null);
+
+  const spaced = euskadiImageKey('https://www.trafikoa.eus/static/files/tr/camaras/127 .jpg');
+  assert.equal(spaced, 'www.trafikoa.eus/static/files/tr/camaras/127%20.jpg');
+  assert.equal(euskadiFrameUrl(euskadiNativeId(spaced)), 'http://www.trafikoa.eus/static/files/tr/camaras/127%20.jpg');
+
+  // Relative URLs name no host: still refused, never guessed.
+  assert.equal(euskadiImageKey('/imagenes/trafico/TunelAntiguo/snap_c1.jpg'), null);
+});
+
 test('frame ids are re-validated when decoded (closed proxy)', () => {
   const ok = euskadiNativeId('www.bizkaimove.com/camaras/cam3.jpg');
   assert.equal(euskadiFrameUrl(ok), 'http://www.bizkaimove.com/camaras/cam3.jpg');
-  for (const key of ['evil.com/x.jpg', '169.254.169.254/latest.jpg', 'www.bizkaimove.com/../x.jpg', 'www.bizkaimove.com', 'a@bizkaimove.com/x.jpg']) {
+  for (const key of ['evil.com/x.jpg', '169.254.169.254/latest.jpg', 'www.bizkaimove.com/../x.jpg', 'www.bizkaimove.com', 'a@bizkaimove.com/x.jpg', 'www.bizkaimove.com/x.jpg?t=1', 'www.bizkaimove.com/x.jpg#f', 'www.vitoria-gasteiz.org/c11-01w/cameras?action=put&id=CAM1']) {
     assert.equal(euskadiFrameUrl(euskadiNativeId(key)), null, key);
   }
   assert.equal(euskadiFrameUrl('../../x'), null);

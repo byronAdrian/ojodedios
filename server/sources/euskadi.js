@@ -42,20 +42,36 @@ export const EUSKADI_IMAGE_DOMAINS = Object.freeze([
   'donostia.org',
 ]);
 
-const SAFE_PATH = /^\/(?!.*\.\.)[A-Za-z0-9/_.~-]{1,160}\.(?:jpe?g|png)$/i;
+// Image file path; a percent-encoded space is tolerated (seen live: ".../127 .jpg").
+const SAFE_PATH = /^\/(?!.*\.\.)(?:[A-Za-z0-9/_.~-]|%20){1,160}\.(?:jpe?g|png)$/i;
+// Cache-busting query some hosts append (seen live: "cam96.jpg?t=8760216"); dropped, the proxy refetches anyway.
+const CACHE_BUSTER = /^\?t=\d{1,15}$/;
 const UTM_ZONE = 30;
+
+/**
+ * Image endpoints without a file extension, accepted only in this exact shape.
+ * Seen live: https://www.vitoria-gasteiz.org/c11-01w/cameras?action=get&id=CAM30
+ */
+const QUERY_ENDPOINTS = Object.freeze([
+  { host: 'www.vitoria-gasteiz.org', path: '/c11-01w/cameras', query: /^\?action=get&id=CAM\d{1,4}$/, protocol: 'https:' },
+]);
 
 const isOfficialHost = (host) =>
   EUSKADI_IMAGE_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`));
 
-/** "host/path" of an accepted official image URL, or null. */
+const endpointFor = (host, path) => QUERY_ENDPOINTS.find((e) => e.host === host && e.path === path) ?? null;
+
+/** "host/path[?query]" of an accepted official image URL, or null. */
 export function euskadiImageKey(rawUrl) {
   try {
     const url = new URL(String(rawUrl).trim());
     const host = url.hostname.toLowerCase();
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-    if (!isOfficialHost(host) || url.username || url.password || url.port || url.search) return null;
+    if (!isOfficialHost(host) || url.username || url.password || url.port || url.hash) return null;
+    const endpoint = endpointFor(host, url.pathname);
+    if (endpoint) return endpoint.query.test(url.search) ? `${host}${url.pathname}${url.search}` : null;
     if (!SAFE_PATH.test(url.pathname)) return null;
+    if (url.search && !CACHE_BUSTER.test(url.search)) return null;
     return `${host}${url.pathname}`;
   } catch {
     return null;
@@ -71,10 +87,13 @@ export function euskadiFrameUrl(nativeId) {
   const slash = key.indexOf('/');
   if (slash < 1) return null;
   const host = key.slice(0, slash);
-  const path = key.slice(slash);
-  if (!/^[a-z0-9.-]{3,100}$/.test(host) || !isOfficialHost(host) || !SAFE_PATH.test(path)) return null;
-  // The catalog publishes http URLs; safeFetch follows a same-host upgrade to https.
-  return `http://${host}${path}`;
+  if (!/^[a-z0-9.-]{3,100}$/.test(host)) return null;
+  const rest = key.slice(slash);
+  const endpoint = endpointFor(host, rest.split('?')[0]);
+  // Most catalog URLs are http and safeFetch follows a same-host upgrade to https.
+  const url = `${endpoint?.protocol ?? 'http:'}//${host}${rest}`;
+  // Single source of truth: the rebuilt URL must validate back to the same key.
+  return euskadiImageKey(url) === key ? url : null;
 }
 
 /** Allowed hosts for fetching one frame: exactly the host of that frame. */
