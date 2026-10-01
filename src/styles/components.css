@@ -229,6 +229,12 @@
   color: var(--text-3);
   font-size: var(--text-sm);
 }
+.search__credit {
+  padding: var(--space-1) var(--space-3);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  text-align: right;
+}
 
 /* ---------- Badges / chips ---------- */
 .badge {

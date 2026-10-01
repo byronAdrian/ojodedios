@@ -26,6 +26,13 @@ https://github.com/bilawalsidhu/gods-eye-view (commit e7707d9).
 `cesium` y `@cesium/engine` © Cesium GS, Inc. y colaboradores. https://github.com/CesiumGS/cesium/blob/main/LICENSE.md
 El logotipo de Cesium ion se muestra en los créditos del mapa, como hace CesiumJS por defecto.
 
+## GeoNames — CC BY 4.0
+
+Localidades de España en `src/data/spainPlaces.data.js`. © GeoNames (https://www.geonames.org),
+licencia Creative Commons Attribution 4.0, obtenidas a través del paquete npm `all-the-cities`
+3.1.0 (MIT, © Zeke Sikelianos). Se han filtrado (España, ≥ 1.000 habitantes) y las coordenadas
+se han redondeado a 3 decimales.
+
 ## Natural Earth — dominio público
 
 Polígonos admin-1 en `server/geo/spainProvinces.data.js`. Made with Natural Earth.

@@ -2,12 +2,13 @@
  * Shareable state ⇄ URL query string. Only validated values are restored, so
  * a hand-edited or malicious link can never put the app in an invalid state.
  *
- * Params: scope=es|world · ca · pr · city · country · cat (comma list) ·
+ * Params: scope=es|world · ca · pr · city (quick city or place `g…`) · country · cat (comma list) ·
  *         st (status) · q · fav=1 · cam (camera id) · at=lat,lon,km · mode=2d · fl=0 (flights off) · mos=1 (control room)
  */
 import { getCommunity, getProvince, getQuickCity, communityOfProvince } from '../domain/spain.js';
 import { CATEGORIES, COUNTRY_NAMES } from '../domain/camera.js';
 import { defaultFilters } from '../domain/filters.js';
+import { isPlaceId } from '../domain/places.js';
 
 const CATEGORY_IDS = new Set(CATEGORIES.map((c) => c.id));
 const STATUSES = new Set(['all', 'active', 'online', 'offline']);
@@ -33,7 +34,8 @@ export function parseUrlState(search) {
     filters.community = community;
   }
   const city = params.get('city') || '';
-  if (getQuickCity(city)) filters.city = city;
+  // Place ids are only checked for shape here; the app drops unknown ones once the gazetteer loads.
+  if (getQuickCity(city) || isPlaceId(city)) filters.city = city;
   const country = (params.get('country') || '').toUpperCase();
   if (COUNTRY_NAMES[country]) filters.country = country;
 

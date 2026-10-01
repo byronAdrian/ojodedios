@@ -6,8 +6,9 @@
 import { createStore } from '../state/store.js';
 import { parseUrlState, serializeUrlState, cameraShareUrl } from '../state/urlState.js';
 import { createPreferences } from '../state/preferences.js';
-import { applyFilters, summarize, sortCameras, defaultFilters, countActiveFilters, distanceKm } from '../domain/filters.js';
-import { buildStaticIndex, buildCameraIndex } from '../domain/search.js';
+import { applyFilters, summarize, sortCameras, defaultFilters, countActiveFilters, distanceKm, nearestCamera } from '../domain/filters.js';
+import { buildStaticIndex, buildCameraIndex, buildPlaceIndex } from '../domain/search.js';
+import { loadPlaces, getCityTarget, getPlace, isPlaceId } from '../domain/places.js';
 import { getCommunity, getQuickCity, communityOfProvince, SPAIN_VIEW, CITY_RADIUS_KM } from '../domain/spain.js';
 import { createCameraRepository, SCOPE_SOURCES } from '../services/cameraRepository.js';
 import { getProvider } from '../domain/camera.js';
@@ -84,7 +85,29 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
   });
   let map = null; // { globe, layer } once Cesium is ready
   const staticIndex = buildStaticIndex();
+  let placeIndex = [];
+  let cameraIndex = [];
   let searchIndex = staticIndex;
+  const rebuildSearchIndex = () => {
+    searchIndex = [...staticIndex, ...placeIndex, ...cameraIndex];
+  };
+
+  /** Loads the town gazetteer once (idempotent; retried after a failure). */
+  let placesPromise = null;
+  function ensurePlaces() {
+    placesPromise ??= loadPlaces().then(
+      (places) => {
+        placeIndex = buildPlaceIndex(places);
+        rebuildSearchIndex();
+        searchBox.refresh();
+      },
+      () => {
+        placesPromise = null;
+        toast('No se ha podido cargar el índice de municipios. Inténtalo de nuevo.', 4200);
+      },
+    );
+    return placesPromise;
+  }
   let pendingDeepLink = initial.cameraId;
 
   // ---------- derived data (memoized on its inputs) ----------
@@ -146,14 +169,17 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       flyTo(SPAIN_VIEW);
     },
     goToCity(id) {
-      const city = getQuickCity(id);
+      const city = getCityTarget(id);
       if (!city) return;
+      // Quick cities keep the province chip; a town may sit near a provincial
+      // border, so for places the radius alone decides what is "near".
+      const quick = Boolean(getQuickCity(id));
       store.set({
         filters: {
           ...store.get().filters,
           scope: 'spain',
-          community: communityOfProvince(city.provinceCode),
-          province: city.provinceCode,
+          community: quick ? communityOfProvince(city.provinceCode) : '',
+          province: quick ? city.provinceCode : '',
           city: id,
         },
       });
@@ -242,7 +268,8 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       }),
     );
     if (generation !== loadGeneration && !pendingDeepLink) return;
-    searchIndex = [...staticIndex, ...buildCameraIndex(getDerived(store.get()).all)];
+    cameraIndex = buildCameraIndex(getDerived(store.get()).all);
+    rebuildSearchIndex();
     resolveDeepLink();
   }
 
@@ -276,9 +303,10 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       flights.refreshTheme();
     },
   });
-  createSearchBox({
+  const searchBox = createSearchBox({
     container: elements.search,
     getIndex: () => searchIndex,
+    onActivate: () => ensurePlaces(),
     onPick(entry) {
       if (entry.type === 'country') {
         if (entry.id === 'ES') {
@@ -293,7 +321,7 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       } else if (entry.type === 'province') {
         actions.setScope('spain');
         actions.setFilters({ province: entry.id, city: '' });
-      } else if (entry.type === 'city') {
+      } else if (entry.type === 'city' || entry.type === 'place') {
         actions.goToCity(entry.id);
       } else if (entry.type === 'category') {
         actions.setFilters({ categories: [entry.id] });
@@ -358,6 +386,17 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
     if (next !== `${location.pathname}${location.search}`) history.replaceState(null, '', next);
   }, 400);
 
+  /**
+   * "Cerca de X" with nothing inside the radius: point at the closest official
+   * camera instead of a dead end. Only computed for that empty case.
+   */
+  function nearbyHint(s, items) {
+    const city = s.tab === 'results' && !items.length ? getCityTarget(s.filters.city) : null;
+    if (!city) return null;
+    const nearest = nearestCamera(scopeCameras(), city.lat, city.lon);
+    return { place: city.name, radiusKm: CITY_RADIUS_KM, nearest };
+  }
+
   /** Cameras for the active tab (shared by the list and the control room). */
   function listItems(s, filtered) {
     if (s.tab === 'favorites') return [...s.favorites].map((id) => s.catalog.get(id)).filter(Boolean);
@@ -396,6 +435,7 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
         sourcesFailed: statuses.every((x) => x?.state === 'error'),
         historySize: preferences.getHistorySize(),
         resetPage: changed('filters') || changed('tab'),
+        nearby: nearbyHint(s, items),
       });
       const failed = SCOPE_SOURCES[s.filters.scope].filter((id) => s.sources[id]?.state === 'error').map((id) => getProvider(id).shortName);
       const stale = SCOPE_SOURCES[s.filters.scope].filter((id) => s.sources[id]?.stale).map((id) => getProvider(id).shortName);
@@ -443,6 +483,18 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
   store.subscribe(renderAll);
   renderAll(store.get(), null);
 
+  // A shared "cerca de <municipio>" link: resolve the place once the gazetteer arrives.
+  if (isPlaceId(initial.filters.city)) {
+    const placeId = initial.filters.city;
+    ensurePlaces().then(() => {
+      const { filters } = store.get();
+      if (filters.city !== placeId) return; // the user already moved on
+      const place = getPlace(placeId);
+      store.set({ filters: { ...filters, city: place ? placeId : '' } }); // new object → re-filter
+      if (place && !initial.view && !initial.cameraId) flyTo({ lat: place.lat, lon: place.lon, km: CITY_RADIUS_KM * 2.2 });
+    });
+  }
+
   // ---------- map (Cesium) ----------
   try {
     map = await createMap({ theme: theme.resolved, ionToken: env.ionToken, onSelect: (id) => actions.select(id) });
@@ -451,7 +503,13 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
     if (s.selectedId) map.layer.setSelected(s.selectedId);
     map.globe.setMode(s.mode);
     if (initial.view) map.globe.flyTo(initial.view, { duration: 0 });
-    else if (!initial.cameraId) map.globe.flyTo(s.filters.scope === 'spain' ? SPAIN_VIEW : { lat: 30, lon: -10, km: 15000 }, { duration: 0 });
+    else if (!initial.cameraId) {
+      const city = getCityTarget(s.filters.city);
+      const start = city
+        ? { lat: city.lat, lon: city.lon, km: CITY_RADIUS_KM * 2.2 }
+        : s.filters.scope === 'spain' ? SPAIN_VIEW : { lat: 30, lon: -10, km: 15000 };
+      map.globe.flyTo(start, { duration: 0 });
+    }
     const onView = debounce(() => {
       if (store.get().onlyInView) store.set({ filters: { ...store.get().filters, viewBounds: map.globe.getViewBounds() } });
       syncUrl();

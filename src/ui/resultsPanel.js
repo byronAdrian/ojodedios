@@ -5,7 +5,8 @@
  */
 import { h, icon, render, formatNumber } from './dom.js';
 import { categoryLabel, countryName, getProvider } from '../domain/camera.js';
-import { getCommunity, getProvince, getQuickCity } from '../domain/spain.js';
+import { getCommunity, getProvince } from '../domain/spain.js';
+import { getCityTarget } from '../domain/places.js';
 
 export const PAGE_SIZE = 40;
 
@@ -101,7 +102,7 @@ export function createResultsPanel({ container, actions }) {
     if (filters.scope === 'world' && filters.country) add(countryName(filters.country), { country: '' });
     if (filters.community) add(getCommunity(filters.community)?.name ?? filters.community, { community: '', province: '' });
     if (filters.province) add(getProvince(filters.province)?.name ?? filters.province, { province: '' });
-    if (filters.city) add(`Cerca de ${getQuickCity(filters.city)?.name}`, { city: '' });
+    if (filters.city) add(`Cerca de ${getCityTarget(filters.city)?.name ?? '…'}`, { city: '' });
     for (const c of filters.categories) add(categoryLabel(c), { categories: filters.categories.filter((x) => x !== c) });
     if (filters.status !== 'all') add(STATUS_LABEL[filters.status], { status: 'all' });
     if (filters.text) add(`“${filters.text}”`, { text: '' });
@@ -110,10 +111,27 @@ export function createResultsPanel({ container, actions }) {
     return items.length ? h('div', { class: 'chip-row' }, ...items) : null;
   }
 
-  function emptyState({ tab, loading, sourcesFailed, filters, onlyInView }) {
+  /** Nothing within the radius of a town: say so and offer the closest official camera. */
+  function nearbyState({ place, radiusKm, nearest }) {
+    return h(
+      'li',
+      { class: 'empty' },
+      icon('pin'),
+      h('p', { class: 'empty__title' }, `No hay cámaras oficiales a menos de ${radiusKm} km de ${place}`),
+      nearest
+        ? h('p', null, `La más cercana está a ${formatNumber(Math.round(nearest.km))} km: ${nearest.camera.name}.`)
+        : h('p', null, 'Las fuentes integradas no publican cámaras en esta zona todavía.'),
+      h('div', { class: 'actions' },
+        nearest ? h('button', { type: 'button', class: 'btn btn--sm', onClick: () => actions.select(nearest.camera.id) }, icon('camera', 'icon icon--sm'), 'Ver la más cercana') : null,
+        h('button', { type: 'button', class: 'btn btn--ghost btn--sm', onClick: () => actions.setFilters({ city: '' }) }, 'Quitar «cerca de»')),
+    );
+  }
+
+  function emptyState({ tab, loading, sourcesFailed, filters, onlyInView, nearby }) {
     if (loading) return h('li', { class: 'empty' }, h('span', { class: 'spinner', 'aria-hidden': 'true' }), h('p', null, 'Cargando cámaras de las fuentes oficiales…'));
     if (tab === 'favorites') return h('li', { class: 'empty' }, icon('star'), h('p', { class: 'empty__title' }, 'Aún no tienes favoritas'), h('p', null, 'Abre una cámara y pulsa la estrella para guardarla en este dispositivo.'));
     if (tab === 'recents') return h('li', { class: 'empty' }, icon('clock'), h('p', { class: 'empty__title' }, 'Sin historial'), h('p', null, 'Las cámaras que abras aparecerán aquí.'));
+    if (nearby && !sourcesFailed) return nearbyState(nearby);
     const hasFilters = filters.community || filters.province || filters.city || filters.categories.length || filters.status !== 'all' || filters.text || filters.favoritesOnly || onlyInView;
     return h(
       'li',
@@ -135,7 +153,8 @@ export function createResultsPanel({ container, actions }) {
    * @param {{ tab: 'results' | 'favorites' | 'recents', items: import('../domain/camera.js').Camera[],
    *   stats: ReturnType<typeof import('../domain/filters.js').summarize>, catalogTotal: number,
    *   filters: object, onlyInView: boolean, selectedId: string | null, availability: Map<string,string>,
-   *   loading: boolean, sourcesFailed: boolean, historySize: number, resetPage: boolean }} state
+   *   loading: boolean, sourcesFailed: boolean, historySize: number, resetPage: boolean,
+   *   nearby?: { place: string, radiusKm: number, nearest: { camera: import('../domain/camera.js').Camera, km: number } | null } | null }} state
    */
   function update(state) {
     const { tab, items, stats, catalogTotal } = state;

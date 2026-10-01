@@ -252,6 +252,30 @@ async function main() {
     await close(page);
   });
 
+  await step('global search finds any town (Aspe), filters nearby and points to the closest camera', async () => {
+    const page = await open('/');
+    await page.locator('#search-input').fill('Aspe');
+    const option = page.locator('.search__option', { hasText: 'Localidad' }).first();
+    await option.waitFor();
+    assert.match(await option.innerText(), /Aspe[\s\S]*Alicante/);
+    await page.locator('.search__credit', { hasText: 'GeoNames' }).waitFor();
+    await page.keyboard.press('Enter');
+    await page.waitForURL(/city=g2521510/);
+    await page.getByRole('button', { name: 'Quitar filtro Cerca de Aspe' }).waitFor();
+    assert.equal(await count(page), '0 de 7 cámaras');
+    await page.getByText('No hay cámaras oficiales a menos de 25 km de Aspe').waitFor();
+    await page.getByRole('button', { name: 'Ver la más cercana' }).click();
+    await page.waitForURL(/cam=dgt%3Ai?122&/);
+    // A shared "cerca de Aspe" link restores the filter once the gazetteer loads.
+    await page.goto(`${page.url().split('?')[0]}?city=g2521510`);
+    await page.getByRole('button', { name: 'Quitar filtro Cerca de Aspe' }).waitFor();
+    // An unknown place id is dropped instead of leaving a broken filter.
+    await page.goto(`${page.url().split('?')[0]}?city=g1`);
+    await page.waitForFunction(() => !location.search.includes('city='));
+    noProblems(page);
+    await close(page);
+  });
+
   await step('favorites and recents persist locally', async () => {
     const page = await open('/');
     await page.locator('.card').first().click();

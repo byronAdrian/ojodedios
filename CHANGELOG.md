@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-10-01
+
+- **Búsqueda de cualquier municipio** (6.849 localidades de España con ≥ 1.000 habitantes, GeoNames CC BY 4.0). Al elegirlo, el mapa se centra y se filtran las cámaras oficiales a 25 km. El enlace se puede compartir (`city=g<id>`). Si no hay cámaras en ese radio, se indica la más cercana y su distancia.
+- El índice de municipios se carga bajo demanda, en un fragmento aparte de unos 116 KB comprimidos, al enfocar el buscador.
+- `npm run data:places` lo regenera de forma reproducible (tarball fijado y verificado con sha512, sin dependencias nuevas).
+
 ## 0.2.0 — 2026-10-01
 
 - **Vídeo en directo**: nueva fuente de webcams públicas emitidas por YouTube, con una lista revisada a mano en `server/sources/livestreams.data.js`. Se reproducen silenciadas al empezar, con el reproductor sin cookies (`youtube-nocookie.com`). En el listado y en la sala de control aparecen con el distintivo «EN DIRECTO».

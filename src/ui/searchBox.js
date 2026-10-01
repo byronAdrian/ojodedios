@@ -5,13 +5,14 @@
 import { h, icon, render, debounce } from './dom.js';
 import { search, typeLabel } from '../domain/search.js';
 
-const TYPE_ICON = { country: 'globe', community: 'map', province: 'map', city: 'pin', camera: 'camera', category: 'filter' };
+const TYPE_ICON = { country: 'globe', community: 'map', province: 'map', city: 'pin', place: 'pin', camera: 'camera', category: 'filter' };
 
 /**
  * @param {{ container: HTMLElement, getIndex: () => import('../domain/search.js').SearchEntry[],
- *           onPick: (entry: import('../domain/search.js').SearchEntry) => void }} deps
+ *           onPick: (entry: import('../domain/search.js').SearchEntry) => void,
+ *           onActivate?: () => void }} deps  onActivate: on every focus (lazy-load extra index data; must be idempotent)
  */
-export function createSearchBox({ container, getIndex, onPick }) {
+export function createSearchBox({ container, getIndex, onPick, onActivate }) {
   const listId = 'search-results';
   const input = h('input', {
     class: 'search__input',
@@ -20,7 +21,7 @@ export function createSearchBox({ container, getIndex, onPick }) {
     role: 'combobox',
     autocomplete: 'off',
     spellcheck: 'false',
-    placeholder: 'Buscar país, comunidad, provincia, ciudad o cámara',
+    placeholder: 'Buscar país, provincia, municipio o cámara',
     'aria-label': 'Buscar',
     'aria-autocomplete': 'list',
     'aria-expanded': 'false',
@@ -48,7 +49,7 @@ export function createSearchBox({ container, getIndex, onPick }) {
     list.hidden = false;
     input.setAttribute('aria-expanded', 'true');
     if (!results.length) {
-      render(list, h('li', { class: 'search__empty', role: 'presentation' }, 'Sin coincidencias. Prueba con otra provincia, ciudad o nombre de cámara.'));
+      render(list, h('li', { class: 'search__empty', role: 'presentation' }, 'Sin coincidencias. Prueba con otra provincia, municipio o nombre de cámara.'));
       return;
     }
     render(
@@ -69,6 +70,10 @@ export function createSearchBox({ container, getIndex, onPick }) {
           h('span', { class: 'badge' }, typeLabel(entry.type)),
         ),
       ),
+      // CC BY 4.0 attribution for the town gazetteer, shown wherever its data is.
+      results.some((entry) => entry.type === 'place')
+        ? h('li', { class: 'search__credit', role: 'presentation' }, 'Municipios: © GeoNames (CC BY 4.0)')
+        : null,
     );
     if (active >= 0) {
       input.setAttribute('aria-activedescendant', `search-opt-${active}`);
@@ -117,7 +122,16 @@ export function createSearchBox({ container, getIndex, onPick }) {
     }
   });
   input.addEventListener('blur', () => setTimeout(close, 120));
-  input.addEventListener('focus', () => input.value.trim().length >= 2 && run());
+  input.addEventListener('focus', () => {
+    onActivate?.();
+    if (input.value.trim().length >= 2) run();
+  });
 
-  return { focus: () => input.focus() };
+  return {
+    focus: () => input.focus(),
+    /** Re-runs the current query (e.g. once more index data has arrived). */
+    refresh() {
+      if (document.activeElement === input && input.value.trim().length >= 2) run();
+    },
+  };
 }

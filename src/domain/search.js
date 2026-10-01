@@ -2,10 +2,10 @@
  * Global search over static geography + loaded cameras + categories.
  * Entirely in-memory: typing never triggers network requests.
  *
- * @typedef {'country' | 'community' | 'province' | 'city' | 'camera' | 'category'} ResultType
- * @typedef {{ type: ResultType, id: string, label: string, detail: string, key: string }} SearchEntry
+ * @typedef {'country' | 'community' | 'province' | 'city' | 'place' | 'camera' | 'category'} ResultType
+ * @typedef {{ type: ResultType, id: string, label: string, detail: string, key: string, rank?: number }} SearchEntry
  */
-import { COMMUNITIES, PROVINCES, QUICK_ACCESS_CITIES, getCommunity } from './spain.js';
+import { COMMUNITIES, PROVINCES, QUICK_ACCESS_CITIES, getCommunity, getProvince } from './spain.js';
 import { CATEGORIES, COUNTRY_NAMES, countryName } from './camera.js';
 import { normalizeText } from './filters.js';
 
@@ -14,13 +14,14 @@ const TYPE_LABEL = {
   community: 'Comunidad',
   province: 'Provincia',
   city: 'Ciudad',
+  place: 'Localidad',
   camera: 'Cámara',
   category: 'Categoría',
 };
 export const typeLabel = (type) => TYPE_LABEL[type] ?? type;
 
 // Geography ranks above cameras on equal match quality.
-const TYPE_WEIGHT = { country: 0, community: 1, province: 2, city: 3, category: 4, camera: 5 };
+const TYPE_WEIGHT = { country: 0, community: 1, province: 2, city: 3, place: 4, category: 5, camera: 6 };
 
 const entry = (type, id, label, detail) => ({ type, id, label, detail, key: normalizeText(label) });
 
@@ -33,6 +34,22 @@ export function buildStaticIndex() {
     ...QUICK_ACCESS_CITIES.map((c) => entry('city', c.id, c.name, 'Navegación geográfica')),
     ...CATEGORIES.map((c) => entry('category', c.id, c.label, '')),
   ];
+}
+
+/**
+ * Gazetteer entries. A town that is already a quick-access city (same name and
+ * province) is skipped so it is not listed twice.
+ * @param {ReadonlyArray<import('./places.js').Place>} places
+ */
+export function buildPlaceIndex(places) {
+  const quick = new Set(QUICK_ACCESS_CITIES.map((c) => `${normalizeText(c.name)}|${c.provinceCode}`));
+  const out = [];
+  for (const place of places) {
+    const item = entry('place', place.id, place.name, getProvince(place.provinceCode)?.name ?? '');
+    if (quick.has(`${item.key}|${place.provinceCode}`)) continue;
+    out.push({ ...item, rank: out.length }); // gazetteer order = population, biggest first
+  }
+  return out;
 }
 
 export function buildCameraIndex(cameras) {
@@ -52,10 +69,10 @@ function score(key, query) {
 /**
  * @param {ReadonlyArray<SearchEntry>} index
  * @param {string} rawQuery
- * @param {{ limit?: number, maxCameras?: number }} [options]
+ * @param {{ limit?: number, maxCameras?: number, maxPlaces?: number }} [options]
  * @returns {SearchEntry[]}
  */
-export function search(index, rawQuery, { limit = 12, maxCameras = 6 } = {}) {
+export function search(index, rawQuery, { limit = 12, maxCameras = 6, maxPlaces = 6 } = {}) {
   const query = normalizeText(rawQuery);
   if (query.length < 2) return [];
   const hits = [];
@@ -64,14 +81,22 @@ export function search(index, rawQuery, { limit = 12, maxCameras = 6 } = {}) {
     if (s >= 0) hits.push({ item, s });
   }
   hits.sort(
-    (a, b) => a.s - b.s || TYPE_WEIGHT[a.item.type] - TYPE_WEIGHT[b.item.type] || a.item.label.localeCompare(b.item.label, 'es'),
+    (a, b) =>
+      a.s - b.s ||
+      TYPE_WEIGHT[a.item.type] - TYPE_WEIGHT[b.item.type] ||
+      (a.item.rank ?? 0) - (b.item.rank ?? 0) ||
+      a.item.label.localeCompare(b.item.label, 'es'),
   );
   const out = [];
   let cameras = 0;
+  let places = 0;
   for (const { item } of hits) {
     if (item.type === 'camera') {
       if (cameras >= maxCameras) continue;
       cameras += 1;
+    } else if (item.type === 'place') {
+      if (places >= maxPlaces) continue;
+      places += 1;
     }
     out.push(item);
     if (out.length >= limit) break;
