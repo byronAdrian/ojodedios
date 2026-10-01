@@ -112,6 +112,11 @@ export function summarize(cameras, availability = new Map()) {
 }
 
 /** Number of active (non-default) filters, for the "Filtros (n)" badge. */
+/** True when the result set depends on what this session observed (image loaded / failed). */
+export function dependsOnAvailability(filters) {
+  return filters?.status === 'online' || filters?.status === 'offline';
+}
+
 export function countActiveFilters(filters) {
   return (
     (filters.community ? 1 : 0) +

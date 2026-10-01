@@ -1,4 +1,4 @@
-# Arquitectura — OJO DEL CULO
+# Arquitectura — OJO DE DIOS
 
 ## ADR-001 · Construir sobre la base técnica de gods-eye-view, no copiar el repositorio completo
 

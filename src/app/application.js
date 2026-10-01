@@ -6,7 +6,7 @@
 import { createStore } from '../state/store.js';
 import { parseUrlState, serializeUrlState, cameraShareUrl } from '../state/urlState.js';
 import { createPreferences } from '../state/preferences.js';
-import { applyFilters, summarize, sortCameras, defaultFilters, countActiveFilters, distanceKm, nearestCamera } from '../domain/filters.js';
+import { applyFilters, summarize, sortCameras, defaultFilters, countActiveFilters, dependsOnAvailability, distanceKm, nearestCamera } from '../domain/filters.js';
 import { buildStaticIndex, buildCameraIndex, buildPlaceIndex } from '../domain/search.js';
 import { loadPlaces, getCityTarget, getPlace, isPlaceId } from '../domain/places.js';
 import { getCommunity, getQuickCity, communityOfProvince, SPAIN_VIEW, CITY_RADIUS_KM } from '../domain/spain.js';
@@ -144,8 +144,12 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
   // ---------- derived data (memoized on its inputs) ----------
   let derivedKey = null;
   let derived = { filtered: [], all: [] };
+  let mapCameras = null; // the array the camera layer last drew
   function getDerived(state) {
-    const key = [state.catalog, state.filters, state.availability, state.favorites];
+    // Availability only changes the result set under the "online"/"offline"
+    // status filters. Keying on it otherwise would rebuild the list and every
+    // map marker each time a thumbnail settles.
+    const key = [state.catalog, state.filters, dependsOnAvailability(state.filters) ? state.availability : null, state.favorites];
     if (derivedKey && key.every((v, i) => v === derivedKey[i])) return derived;
     const all = [...state.catalog.values()];
     const filtered = sortCameras(applyFilters(all, state.filters, { availability: state.availability, favorites: state.favorites }), state.filters);
@@ -482,7 +486,8 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
       mapStatus.update({ loading: statuses.some((x) => x?.state === 'loading'), failed, stale });
     }
 
-    if (map && (changed('filters') || changed('catalog') || changed('availability') || changed('favorites'))) {
+    if (map && filtered !== mapCameras) {
+      mapCameras = filtered;
       map.layer.setCameras(filtered);
     }
 
@@ -548,7 +553,8 @@ export async function startApplication({ elements, createMap, fetchImpl, env = {
   try {
     map = await createMap({ theme: theme.resolved, ionToken: env.ionToken, onSelect: (id) => actions.select(id) });
     const s = store.get();
-    map.layer.setCameras(getDerived(s).filtered);
+    mapCameras = getDerived(s).filtered;
+    map.layer.setCameras(mapCameras);
     if (s.selectedId) map.layer.setSelected(s.selectedId);
     map.globe.setMode(s.mode);
     if (initial.view) map.globe.flyTo(initial.view, { duration: 0 });

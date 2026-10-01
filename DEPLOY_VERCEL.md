@@ -1,6 +1,6 @@
 # Despliegue en Vercel
 
-Guía paso a paso para publicar OJO DEL CULO desde GitHub con despliegues automáticos.
+Guía paso a paso para publicar OJO DE DIOS desde GitHub con despliegues automáticos.
 Todos los comandos están comprobados contra `package.json`.
 
 ## 1. Requisitos previos

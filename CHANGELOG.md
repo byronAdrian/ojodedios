@@ -1,9 +1,20 @@
 # Changelog
 
+## 0.4.2 — 2026-10-01
+
+- Nombre de la aplicación: **OJO DE DIOS**.
+- **Corrección**: la lista de cámaras se recargaba sola en cadena. Cada miniatura que cargaba reconstruía la lista entera, lo que volvía a pedir las demás imágenes y redibujaba todos los marcadores del mapa. Ahora cada tarjeta se crea una sola vez y solo se actualiza su distintivo; el mapa solo se redibuja si cambia el conjunto de cámaras. Con 7 tarjetas se creaban 32 imágenes; ahora, 7. Un test E2E lo comprueba.
+- Eliminadas las líneas de barrido sobre el mapa (producían efecto muaré y parecía que el mapa se actualizaba constantemente). El cursor del logotipo parpadea unas veces al cargar y se detiene.
+
+## 0.4.1 — 2026-10-01
+
+- **Corrección**: los marcadores (terremotos, incendios, cámaras y aviones) del otro lado del planeta se veían a través del globo y parecían moverse al girarlo. Ahora la Tierra los tapa, como debe ser. Hay un test que impide reintroducir el fallo.
+- Los terremotos se dibujan como anillos violeta (rosa si M ≥ 4,5) para no confundirlos con los focos de incendio (puntos naranjas) ni con la cámara seleccionada (amarilla).
+
 ## 0.4.0 — 2026-10-01
 
 - **Panel de capas** en los controles del mapa: cámaras, vuelos, terremotos e incendios, cada uno con su estado. Accesible con teclado (Esc cierra). Se guarda en la URL (`cams=0`, `eq=0`, `fi=1`).
-- **Terremotos en tiempo real** (USGS, últimas 24 h), activos por defecto. El tamaño indica la magnitud y el rojo marca M ≥ 4,5. La ficha muestra magnitud, lugar, hora, profundidad, aviso de tsunami si la fuente lo indica y enlace oficial.
+- **Terremotos en tiempo real** (USGS, últimas 24 h), activos por defecto. El tamaño indica la magnitud y el color más intenso marca M ≥ 4,5. La ficha muestra magnitud, lugar, hora, profundidad, aviso de tsunami si la fuente lo indica y enlace oficial.
 - **Incendios** (NASA FIRMS, VIIRS): focos de calor de la zona visible. La clave `FIRMS_MAP_KEY` vive solo en el servidor y nunca aparece en respuestas ni errores (hay test que lo verifica).
 - **Nuevas cámaras: Caltrans (California)**, 12 distritos, con proxy de imágenes cerrado.
 - Diseño Matrix: el tinte verde se aplica ahora solo al mapa base, para que los colores de los marcadores sean fieles.

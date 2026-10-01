@@ -2,7 +2,7 @@
 
 ## Alcance del producto
 
-OJO DEL CULO muestra **exclusivamente cámaras públicas publicadas por organismos
+OJO DE DIOS muestra **exclusivamente cámaras públicas publicadas por organismos
 oficiales** a través de sus catálogos. No implementa, ni aceptará contribuciones que añadan:
 acceso a cámaras privadas o domésticas, descubrimiento de dispositivos, elusión de
 autenticación o de controles de acceso, reconocimiento facial o de matrículas,

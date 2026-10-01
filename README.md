@@ -1,4 +1,4 @@
-# OJO DEL CULO
+# OJO DE DIOS
 
 Explorador de **cámaras públicas oficiales** sobre un globo 3D (CesiumJS) y un mapa 2D,
 con una sección prioritaria para España: comunidades autónomas, provincias, ciudades,
